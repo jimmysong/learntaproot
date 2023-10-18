@@ -629,7 +629,7 @@ class PrivateKey:
         # Signature(r, s)
         return Signature(r, s)
 
-    def sign_schnorr(self, msg, aux=None):
+    def bip340_k(self, msg, aux=None):
         # k is generated using the aux variable, which can be set
         # to a known value to make k deterministic
         # the idea of k generation here is to mix in the private key
@@ -647,7 +647,16 @@ class PrivateKey:
         # t contains the secret, msg is added so it's unique to the
         # message and private key
         t = xor_bytes(int_to_big_endian(d, 32), hash_aux(aux))
-        k = big_endian_to_int(hash_nonce(t + self.point.xonly() + msg)) % N
+        return big_endian_to_int(hash_nonce(t + self.point.xonly() + msg)) % N
+
+    def sign_schnorr(self, msg, aux=None):
+        # set d (working secret) to N - secret if odd, secret otherwise
+        if self.point.parity:
+            d = N - self.secret
+        else:
+            d = self.secret
+        # get k using the self.bip340_k method
+        k = self.bip340_k(msg, aux)
         # get the resulting R=kG point
         r = k * G
         # if R's y coordinate is odd, flip the k

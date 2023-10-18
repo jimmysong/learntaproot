@@ -39,7 +39,7 @@ for session in sessions:
     cells = notebook['cells']
     cells_complete = notebook_complete['cells']
     path = 'session{}'.format(session)
-    with open('{}/answers.py'.format(path), 'r') as f:
+    with open('{}/complete/answers.py'.format(path), 'r') as f:
         current = ''
         cell_type = None
         exercise_number = 1

@@ -1,35 +1,29 @@
-raw_items = """ecc.S256Point.xonly
-ecc.S256Point.verify_schnorr
-ecc.PrivateKey.sign_schnorr
-ecc.S256Point.tweak
-ecc.S256Point.tweaked_key
-ecc.S256Point.p2tr_script
-ecc.PrivateKey.tweaked_key
-taproot.TapLeaf.hash
-taproot.TapBranch.hash
-taproot.ControlBlock.merkle_root
-taproot.ControlBlock.external_pubkey
-"""
-
-
 def chop_word(s):
     for i, _ in enumerate(s):
         letter = s[i:i+1]
         if letter not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_":
             return s[:i]
 
-raw_items_2 = """hash.tagged_hash
-op.op_checksigadd_schnorr
-"""
-
 to_clear = {}
-files = {}
-for item in raw_items_2.split():
-    components = item.split('.')
-    files[components[0]] = 1
-    to_clear[item] = 1
+files_methods = {}
+files_functions = {}
+with open("session/complete/answers.py", "r") as file:
+    parse = False
+    for raw_line in file:
+        line = raw_line.strip()
+        if line == '"""':
+            parse = False
+        if parse:
+            to_clear[line] = 1
+            components = line.split('.')
+            if len(components) == 3:
+                files_methods[components[0]] = 1
+            else:
+                files_functions[components[0]] = 1
+        if line == 'FUNCTIONS = """':
+            parse = True
 
-for filename in files.keys():
+for filename in files_functions.keys():
     modified_file = ""
     with open(f"session/{filename}.py", "r") as file:
         current_func = None
@@ -54,14 +48,7 @@ for filename in files.keys():
     with open(f"session/{filename}.py", "w") as file:
         file.write(modified_file)
 
-to_clear = {}
-files = {}
-for item in raw_items.split():
-    components = item.split('.')
-    files[components[0]] = 1
-    to_clear[item] = 1
-
-for filename in files.keys():
+for filename in files_methods.keys():
     modified_file = ""
     with open(f"session/{filename}.py", "r") as file:
         current_class = None

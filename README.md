@@ -2,8 +2,8 @@
 
 Install python 3.8 or above on your machine:
 
- * Windows: https://www.python.org/downloads/release/python-395/
- * Mac OS X: https://www.python.org/downloads/release/python-395/
+ * Windows: https://www.python.org/downloads/windows/
+ * Mac OS X: https://www.python.org/downloads/macos/
  * Linux: see your distro docs (on Debian/Ubuntu `sudo apt install python3` should work)
 
 Install pip:
@@ -41,3 +41,7 @@ Windows:
 # Run jupyter notebook
 
     (.venv) $ jupyter notebook
+
+# Open the slides
+
+    (.venv) $ open index.html

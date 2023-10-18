@@ -1,52 +1,5 @@
 """
 #markdown
-# Session Objectives
-* Learn Schnorr Signatures
-* Learn Taproot Key Spend
-* Learn Taproot Path Spend
-#endmarkdown
-#markdown
-# Schnorr Signatures
-#endmarkdown
-#markdown
-# Motivation
-* Conceptually Simpler
-* ECDSA uses DER, which is 72-73 bytes, Schnorr uses 64
-* Fewer Elliptic Curve Operations (hash instead)
-* Key Aggregation/Signature Aggregation/Batch Verification
-#endmarkdown
-#markdown
-# ECDSA Signing
-* $eG=P$, $z$ is hash of what's being signed, choose a random $k$
-* Compute $kG=R=(x,y)$, let $r=x$
-* Compute $s=\frac{z+re}{k}$
-* Signature is the pair $(r,s)$
-#endmarkdown
-#markdown
-# ECDSA Verification
-* $eG=P$, $z$ is hash of what's being signed, choose a random $k$
-* Signature is $(r,s)$ where $s=\frac{z+re}{k}$
-* Compute $u=\frac{z}{s}, v=\frac{r}{s}$
-* $$uG+vP=\frac{z}{s}G+\frac{r}{s}P=\frac{z}{s}G+\frac{re}{s}G \\ =\frac{z+re}{s}G =\frac{(z+re)k}{z+re}G \\ =kG=R=(r,y)$$
-#endmarkdown
-#markdown
-# ECDSA
-* $u$ is used to commit to $z$, or the tx being attested to
-* $v$ is used to commit to $r$, or the target/challenge that we're trying to hit/respond to
-* Kludgy, uses field division, which is expensive computationally
-* Developed after Schnorr and used in Bitcoin due to Patent issues (expired 2008)
-#endmarkdown
-#markdown
-# Schnorr
-* Uses a hash function instead of field division
-* That hash can commit to everything at once, instead of just one thing.
-* $H(a||b||c||...)$
-* Target is a point on the curve $R$, not just the $x$ coordinate
-* Aggregation of keys and signatures now possible!
-* Batch verification possible!
-* BIP340
-#endmarkdown
-#markdown
 # Tagged Hashes
 * Each hash is different so that hashes cannot feasibly collide
 * There are 10 different contexts, each creating its own set of hashes
@@ -135,22 +88,6 @@ e79c4eb45764bd015542f6779cc70fef44b7a2432f839264768288efab886291
 ecc:XOnlyTest:test_xonly:
 #endunittest
 #markdown
-# Schnorr Signature
-* $x$-only keys (Always even $y$)
-* Uses tagged hashes (different tagged per operation)
-* $k$-generation has a separate process
-* Target is an $x$-only key
-* $(R,s)$, where $R$ is the pubkey of the target and $s$ is 32 bytes
-* Serialization is $R$ as $x$-only followed by $s$ in big endian
-#endmarkdown
-#markdown
-# ECDSA Verification
-* $eG=P$, $z$ message, $kG=(r,y)$
-* Signature is $(r,s)$ where $s=\frac{z+re}{k}$
-* Compute $u=\frac{z}{s}, v=\frac{r}{s}$
-* $uG+vP=\frac{z}{s}G+\frac{r}{s}P=\frac{z}{s}G+\frac{re}{s}G \\ =\frac{z+re}{s}G =\frac{(z+re)k}{z+re}G \\ =kG=R=(r,y)$
-#endmarkdown
-#markdown
 # Schnorr Verification
 * $eG=P$, $m$ message, $kG=R$, $H$ is a hash function
 * Signature is $(R,s)$ where $s=k + e H(R||P||m)$
@@ -207,13 +144,6 @@ True
 #unittest
 ecc:SchnorrTest:test_verify:
 #endunittest
-#markdown
-# ECDSA Signing
-* $eG=P$, $z$ message, $k$ random
-* $kG=R=(x,y)$, let $r=x$
-* $s=\frac{z+re}{k}$
-* Signature is $(r,s)$
-#endmarkdown
 #markdown
 # Schnorr Signing
 * $eG=P$, $m$ message, $k$ random
@@ -293,16 +223,6 @@ Sign the message b"I'm learning Taproot!" with the private key 21,000,000
 ecc:SchnorrTest:test_sign:
 #endunittest
 #markdown
-# $k$ Generation
-* Revealing $k$ reveals the private key
-* Bad random number generator for $k$ will reveal the private key
-* BIP340 starts with a random number $a$ called the auxillary
-* Then xor $a$ with the secret to make it impossible to guess
-* Then we hash with the message to generate the $k$
-* This makes $k$ unique to both the secret and the message
-* 32 0-bytes $a$ can be used to create a deterministic $k$
-#endmarkdown
-#markdown
 # Batch Verification
 * $e_iG=P_i$, $m_i$ message, $H$
 * Signature is $(R_i,s_i)$, $h_i=H(R_i||P_i||m_i)$
@@ -355,32 +275,6 @@ Message 2 = af1c325abcb0cced3a4166ce67be1db659ae1dd574fe49b0f2941d8d4882d62c
 True
 
 #endexercise
-#markdown
-# Taproot Key Path Spend
-#endmarkdown
-#markdown
-# Taproot
-* BIP341
-* Combines both single-key and arbitrary script type addresses
-* p2pkh and p2sh did those previously
-* p2wpkh and p2wsh did those in Segwit
-#endmarkdown
-#markdown
-# Taproot Architecture
-* KeyPath Spend (single-key like p2pkh and p2wpkh)
-* ScriptPath Spend (arbitrary script like p2sh and p2wsh)
-* ScriptPath is a Merkle Tree of TapScripts
-* TapScripts are like Script, but with slightly different OP codes
-#endmarkdown
-#markdown
-# Taproot Implementation
-* Segwit version 1
-* Requires OP_1 and 32 bytes
-* The 32 bytes are an $x$-only public key $Q$ (external public key)
-* KeyPath spend's public key is $P$ (internal public key)
-* The Merkle Root of the ScriptPath Spend combined with the internal public key generates the tweak ($t$)
-* $Q=P+tG$
-#endmarkdown
 #markdown
 # How to spend from the KeyPath
 * You have to know the Merkle Root of the ScriptPath
@@ -480,13 +374,6 @@ tb1pfx2ys8pzcg0mdufk9v25hphv85zgjpv5kyn6uevdmfmvdsw0ea0qyvv87u
 
 #endexercise
 #markdown
-# Spending P2TR KeyPath
-* We need the tweak $t$ and the private key $e$ to be able to sign the transaction
-* The pubkey is in the UTXO as an $x$-only key
-* All we need is the Schnorr Signature in the Witness field
-* We use the <code>sign_schnorr</code> method in the <code>PrivateKey</code> to do this.
-#endmarkdown
-#markdown
 # Spending plan
 * We have 20,000 sats in this output: 871864d7631024465fc210e553fa9f50e7f0f2359288ad121aa733d65e366995:0
 * We want to spend all of it to tb1ptaqplrhnyh3kq85n7dtm5vcpgstt0ev80f4wd8ngeppch4fzu8mquchufq
@@ -527,6 +414,8 @@ ecc:PrivateKeyTest:test_tweaked_key:
 
 You have been sent 100,000 sats to your address on Signet. Send 40,000 sats back to <code>tb1q7kn55vf3mmd40gyj46r245lw87dc6us5n50lrg</code>, the rest to yourself.
 
+Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction" target="_mempool">Mempool Signet</a> to broadcast your transaction
+
 ----
 
 >>> from ecc import PrivateKey
@@ -564,17 +453,6 @@ True
 01000000000101376afebcc53dd694c99c5674846909881f790145948cb820b1f61f89486309250000000000ffffffff02409c000000000000160014f5a74a3131dedb57a092ae86aad3ee3f9b8d72146ce80000000000002251204994481c22c21fb6f1362b154b86ec3d04890594b127ae658dda76c6c1cfcf5e014002de2a8a88783937f10742235dfdf6a0f9526f4e8eee9d3d4cd11d5813269a0d1b56b5028b81735dae9d3dd9b9f2fe2193474dba0569cff087c2575f0f8f5b5f00000000
 
 #endexercise
-#markdown
-# Taproot Script Path Spend
-#endmarkdown
-#markdown
-# TapScript
-* Defined in BIP342
-* Same as Script except for a few New/Changed OP Codes
-* OP_CHECKSIG and OP_CHECKSIGVERIFY verify Schnorr Signatures
-* OP_CHECKMULTISIG and OP_CHECKMULTISIGVERIFY are disabled
-* OP_CHECKSIGADD is added to replace multisig and verifies Schnorr Signatures
-#endmarkdown
 #markdown
 # OP_CHECKSIGADD
 * Consumes the top three elements: a pubkey, a number, and a signature.
@@ -757,16 +635,6 @@ f938d6fa5e3335e540f07a4007ee296640a977c89178aca79f15f2ec6acc14b6
 taproot:TapRootTest:test_tapbranch_hash:
 #endunittest
 #markdown
-# Merkle Root
-* The Merkle Root of the Merkle Tree can be used to compute the tweak $t$
-* A TapLeaf (1 condition) or TapBranch (more than 1 condition) or a deterministic hash (0 conditions)
-* Any TapScript inside the Merkle Tree can unlock the UTXO
-* Unlocking requires satisfying the TapScript and a Control Block
-* Unlocking conditions are hidden until spent
-* Unused unlocking conditions remain hidden
-* Up to 128 levels, meaning $2^{128}$ conditions
-#endmarkdown
-#markdown
 # Computing the Merkle Root
 * The Merkle Root is the hash of the root element of the Merkle Tree
 * For TapLeaf: Tagged hash (TapLeaf) of TapLeaf Version followed by the TapScript
@@ -830,14 +698,6 @@ Calculate the External PubKey for a Taproot output whose internal pubkey is 9090
 8b9f09cd4a33e62b0c9d086056bbdeb7a218c1e4830291b9be56841b31d94ccb
 
 #endexercise
-#markdown
-# Script Path Spending
-* Merkle Proof and Internal Public Key in the Control Block (last element of Witness)
-* TapScript is the second-to-last element of the Witness
-* Unlock/Satisfy the TapScript, which are the other elements of the Witness
-* Combine the TapScript and the Merkle Proof to get the Merkle Root
-* Combine Merkle Root and Internal Public Key to get the External Public Key
-#endmarkdown
 #markdown
 # Control Block
 * Required for spending a TapScript, last element of Witness
@@ -959,6 +819,8 @@ tb1pxh7kypwsvxnat0z6588pufhx43r2fnqjyn846qj5kx8mgqcamvjsyn5cjg
 
 Send yourself the rest of the coins from the output of the previous exercise to the address you just created
 
+Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction" target="_mempool">Mempool Signet</a> to broadcast your transaction
+
 ----
 >>> from ecc import PrivateKey, S256Point
 >>> from helper import sha256, big_endian_to_int
@@ -994,6 +856,8 @@ True
 #exercise
 
 Now spend this output using the script path from the second TapLeaf send it all to <code>tb1q7kn55vf3mmd40gyj46r245lw87dc6us5n50lrg</code>
+
+Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction" target="_mempool">Mempool Signet</a> to broadcast your transaction
 
 ----
 >>> from ecc import PrivateKey, S256Point
@@ -1047,183 +911,18 @@ True
 #endexercise
 """
 
-from unittest import TestCase
-
-import hash
-import op
-
-from ecc import (
-    G,
-    N,
-    PrivateKey,
-    S256Point,
-    SchnorrSignature,
-)
-from hash import (
-    hash_aux,
-    hash_challenge,
-    hash_nonce,
-    hash_tapbranch,
-    hash_tapleaf,
-    hash_taptweak,
-    sha256,
-)
-from helper import (
-    big_endian_to_int,
-    int_to_big_endian,
-    int_to_byte,
-    xor_bytes,
-)
-from op import decode_num, encode_num
-from taproot import TapLeaf, TapBranch, ControlBlock
-
-
-def tagged_hash(tag, msg):
-    tag_hash = sha256(tag)
-    return sha256(tag_hash + tag_hash + msg)
-
-
-def xonly(self):
-    if self.x is None:
-        return b"\x00" * 32
-    return int_to_big_endian(self.x.num, 32)
-
-
-def verify_schnorr(self, msg, schnorr_sig):
-    if self.parity:
-        point = -1 * self
-    else:
-        point = self
-    if schnorr_sig.r.x is None:
-        return False
-    message = schnorr_sig.r.xonly() + point.xonly() + msg
-    challenge = big_endian_to_int(hash_challenge(message)) % N
-    result = -challenge * point + schnorr_sig.s * G
-    if result.x is None:
-        return False
-    if result.parity:
-        return False
-    return result.xonly() == schnorr_sig.r.xonly()
-
-
-def sign_schnorr(self, msg, aux=None):
-    if aux is None:
-        aux = b"\x00" * 32
-    if self.point.parity:
-        d = N - self.secret
-    else:
-        d = self.secret
-    if len(msg) != 32:
-        raise ValueError("msg needs to be 32 bytes")
-    if len(aux) != 32:
-        raise ValueError("aux needs to be 32 bytes")
-    t = xor_bytes(int_to_big_endian(d, 32), hash_aux(aux))
-    k = big_endian_to_int(hash_nonce(t + self.point.xonly() + msg)) % N
-    r = k * G
-    if r.parity:
-        k = N - k
-        r = k * G
-    commitment = r.xonly() + self.point.xonly() + msg
-    e = big_endian_to_int(hash_challenge(commitment)) % N
-    s = (k + e * d) % N
-    sig = SchnorrSignature(r, s)
-    if not self.point.verify_schnorr(msg, sig):
-        raise RuntimeError("Bad Signature")
-    return sig
-
-
-def tweak(self, merkle_root=b""):
-    tweak = hash_taptweak(self.xonly() + merkle_root)
-    return tweak
-
-
-def tweaked_key(self, merkle_root=b""):
-    tweak = self.tweak(merkle_root)
-    t = big_endian_to_int(tweak)
-    external_key = self + t * G
-    return external_key
-
-
-def p2tr_script(self, merkle_root=b""):
-    from script import P2TRScriptPubKey
-
-    external_pubkey = self.tweaked_key(merkle_root)
-    return P2TRScriptPubKey(external_pubkey)
-
-
-def tweaked_key_priv(self, merkle_root=b""):
-    tweak = self.point.tweak(merkle_root)
-    t = big_endian_to_int(tweak)
-    new_secret = (self.secret + t) % N
-    return self.__class__(new_secret)
-
-
-def op_checksigadd_schnorr(stack, tx_obj, input_index):
-    if len(stack) < 3:
-        return False
-    pubkey = stack.pop()
-    n = decode_num(stack.pop())
-    signature = stack.pop()
-    point = S256Point.parse_xonly(pubkey)
-    if len(signature) == 0:
-        stack.append(encode_num(n))
-        return True
-    if len(signature) == 65:
-        hash_type = signature[-1]
-        signature = signature[:-1]
-    else:
-        hash_type = None
-    sig = SchnorrSignature.parse(signature)
-    msg = tx_obj.sig_hash(input_index, hash_type)
-    if point.verify_schnorr(msg, sig):
-        stack.append(encode_num(n + 1))
-    else:
-        stack.append(encode_num(n))
-    return True
-
-
-def hash_leaf(self):
-    content = int_to_byte(self.tapleaf_version) + self.tap_script.serialize()
-    return hash_tapleaf(content)
-
-
-def hash_branch(self):
-    left_hash = self.left.hash()
-    right_hash = self.right.hash()
-    if left_hash < right_hash:
-        return hash_tapbranch(left_hash + right_hash)
-    else:
-        return hash_tapbranch(right_hash + left_hash)
-
-
-def merkle_root(self, tap_script):
-    leaf = TapLeaf(tap_script, self.tapleaf_version)
-    current = leaf.hash()
-    for h in self.hashes:
-        if current < h:
-            current = hash_tapbranch(current + h)
-        else:
-            current = hash_tapbranch(h + current)
-    return current
-
-
-def external_pubkey(self, tap_script):
-    merkle_root = self.merkle_root(tap_script)
-    return self.internal_pubkey.tweaked_key(merkle_root)
-
-
-class ATest(TestCase):
-    def test_apply(self):
-        hash.tagged_hash = tagged_hash
-        S256Point.xonly = xonly
-        S256Point.verify_schnorr = verify_schnorr
-        PrivateKey.sign_schnorr = sign_schnorr
-        S256Point.tweak = tweak
-        S256Point.tweaked_key = tweaked_key
-        S256Point.p2tr_script = p2tr_script
-        PrivateKey.tweaked_key = tweaked_key_priv
-        op.op_checksigadd_schnorr = op_checksigadd_schnorr
-        TapLeaf.hash = hash_leaf
-        TapBranch.hash = hash_branch
-        ControlBlock.merkle_root = merkle_root
-        ControlBlock.external_pubkey = external_pubkey
+FUNCTIONS = """
+hash.tagged_hash
+ecc.S256Point.xonly
+ecc.S256Point.verify_schnorr
+ecc.PrivateKey.sign_schnorr
+ecc.S256Point.tweak
+ecc.S256Point.tweaked_key
+ecc.S256Point.p2tr_script
+ecc.PrivateKey.tweaked_key
+op.op_checksigadd_schnorr
+taproot.TapLeaf.hash
+taproot.TapBranch.hash
+taproot.ControlBlock.merkle_root
+taproot.ControlBlock.external_pubkey
+"""
