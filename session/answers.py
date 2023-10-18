@@ -1046,3 +1046,184 @@ True
 
 #endexercise
 """
+
+from unittest import TestCase
+
+import hash
+import op
+
+from ecc import (
+    G,
+    N,
+    PrivateKey,
+    S256Point,
+    SchnorrSignature,
+)
+from hash import (
+    hash_aux,
+    hash_challenge,
+    hash_nonce,
+    hash_tapbranch,
+    hash_tapleaf,
+    hash_taptweak,
+    sha256,
+)
+from helper import (
+    big_endian_to_int,
+    int_to_big_endian,
+    int_to_byte,
+    xor_bytes,
+)
+from op import decode_num, encode_num
+from taproot import TapLeaf, TapBranch, ControlBlock
+
+
+def tagged_hash(tag, msg):
+    tag_hash = sha256(tag)
+    return sha256(tag_hash + tag_hash + msg)
+
+
+def xonly(self):
+    if self.x is None:
+        return b"\x00" * 32
+    return int_to_big_endian(self.x.num, 32)
+
+
+def verify_schnorr(self, msg, schnorr_sig):
+    if self.parity:
+        point = -1 * self
+    else:
+        point = self
+    if schnorr_sig.r.x is None:
+        return False
+    message = schnorr_sig.r.xonly() + point.xonly() + msg
+    challenge = big_endian_to_int(hash_challenge(message)) % N
+    result = -challenge * point + schnorr_sig.s * G
+    if result.x is None:
+        return False
+    if result.parity:
+        return False
+    return result.xonly() == schnorr_sig.r.xonly()
+
+
+def sign_schnorr(self, msg, aux=None):
+    if aux is None:
+        aux = b"\x00" * 32
+    if self.point.parity:
+        d = N - self.secret
+    else:
+        d = self.secret
+    if len(msg) != 32:
+        raise ValueError("msg needs to be 32 bytes")
+    if len(aux) != 32:
+        raise ValueError("aux needs to be 32 bytes")
+    t = xor_bytes(int_to_big_endian(d, 32), hash_aux(aux))
+    k = big_endian_to_int(hash_nonce(t + self.point.xonly() + msg)) % N
+    r = k * G
+    if r.parity:
+        k = N - k
+        r = k * G
+    commitment = r.xonly() + self.point.xonly() + msg
+    e = big_endian_to_int(hash_challenge(commitment)) % N
+    s = (k + e * d) % N
+    sig = SchnorrSignature(r, s)
+    if not self.point.verify_schnorr(msg, sig):
+        raise RuntimeError("Bad Signature")
+    return sig
+
+
+def tweak(self, merkle_root=b""):
+    tweak = hash_taptweak(self.xonly() + merkle_root)
+    return tweak
+
+
+def tweaked_key(self, merkle_root=b""):
+    tweak = self.tweak(merkle_root)
+    t = big_endian_to_int(tweak)
+    external_key = self + t * G
+    return external_key
+
+
+def p2tr_script(self, merkle_root=b""):
+    from script import P2TRScriptPubKey
+
+    external_pubkey = self.tweaked_key(merkle_root)
+    return P2TRScriptPubKey(external_pubkey)
+
+
+def tweaked_key_priv(self, merkle_root=b""):
+    tweak = self.point.tweak(merkle_root)
+    t = big_endian_to_int(tweak)
+    new_secret = (self.secret + t) % N
+    return self.__class__(new_secret)
+
+
+def op_checksigadd_schnorr(stack, tx_obj, input_index):
+    if len(stack) < 3:
+        return False
+    pubkey = stack.pop()
+    n = decode_num(stack.pop())
+    signature = stack.pop()
+    point = S256Point.parse_xonly(pubkey)
+    if len(signature) == 0:
+        stack.append(encode_num(n))
+        return True
+    if len(signature) == 65:
+        hash_type = signature[-1]
+        signature = signature[:-1]
+    else:
+        hash_type = None
+    sig = SchnorrSignature.parse(signature)
+    msg = tx_obj.sig_hash(input_index, hash_type)
+    if point.verify_schnorr(msg, sig):
+        stack.append(encode_num(n + 1))
+    else:
+        stack.append(encode_num(n))
+    return True
+
+
+def hash_leaf(self):
+    content = int_to_byte(self.tapleaf_version) + self.tap_script.serialize()
+    return hash_tapleaf(content)
+
+
+def hash_branch(self):
+    left_hash = self.left.hash()
+    right_hash = self.right.hash()
+    if left_hash < right_hash:
+        return hash_tapbranch(left_hash + right_hash)
+    else:
+        return hash_tapbranch(right_hash + left_hash)
+
+
+def merkle_root(self, tap_script):
+    leaf = TapLeaf(tap_script, self.tapleaf_version)
+    current = leaf.hash()
+    for h in self.hashes:
+        if current < h:
+            current = hash_tapbranch(current + h)
+        else:
+            current = hash_tapbranch(h + current)
+    return current
+
+
+def external_pubkey(self, tap_script):
+    merkle_root = self.merkle_root(tap_script)
+    return self.internal_pubkey.tweaked_key(merkle_root)
+
+
+class ATest(TestCase):
+    def test_apply(self):
+        hash.tagged_hash = tagged_hash
+        S256Point.xonly = xonly
+        S256Point.verify_schnorr = verify_schnorr
+        PrivateKey.sign_schnorr = sign_schnorr
+        S256Point.tweak = tweak
+        S256Point.tweaked_key = tweaked_key
+        S256Point.p2tr_script = p2tr_script
+        PrivateKey.tweaked_key = tweaked_key_priv
+        op.op_checksigadd_schnorr = op_checksigadd_schnorr
+        TapLeaf.hash = hash_leaf
+        TapBranch.hash = hash_branch
+        ControlBlock.merkle_root = merkle_root
+        ControlBlock.external_pubkey = external_pubkey

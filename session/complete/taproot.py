@@ -78,8 +78,10 @@ class TapBranch:
             self._leaves = None
 
     def hash(self):
+        # get the left and right hashes
         left_hash = self.left.hash()
         right_hash = self.right.hash()
+        # use hash_tapbranch on them in alphabetical order
         if left_hash < right_hash:
             return hash_tapbranch(left_hash + right_hash)
         else:
@@ -182,6 +184,11 @@ class ControlBlock:
         return cls(tapleaf_version, parity, internal_pubkey, hashes)
 
 
+class TapScript(ScriptPubKey):
+    def tap_leaf(self):
+        return TapLeaf(self)
+
+
 class TapRootTest(TestCase):
     def test_tapleaf_hash(self):
         tap_script = TapScript.parse(
@@ -265,8 +272,3 @@ class TapRootTest(TestCase):
         )
         cb = tap_root.control_block(internal_pubkey, tap_leaf_2)
         self.assertEqual(cb.serialize().hex(), hex_cb)
-
-
-class TapScript(ScriptPubKey):
-    def tap_leaf(self):
-        return TapLeaf(self)

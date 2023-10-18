@@ -278,13 +278,13 @@ class S256Point(Point):
 
     def tweak(self, merkle_root=b""):
         """returns the tweak for use in p2tr if there's no script path"""
-        # take the hash_taptweak of the xonly
+        # take the hash_taptweak of the xonly and the merkle root
         tweak = hash_taptweak(self.xonly() + merkle_root)
         return tweak
 
     def tweaked_key(self, merkle_root=b""):
         """Creates the tweaked external key for a particular tweak."""
-        # Get the tweak from the tweak method
+        # Get the tweak from the merkle root
         tweak = self.tweak(merkle_root)
         # t is the tweak interpreted as big endian
         t = big_endian_to_int(tweak)
@@ -368,19 +368,27 @@ class S256Point(Point):
         return self.verify(z, sig)
 
     def verify_schnorr(self, msg, schnorr_sig):
+        # define point as self if it's even, -1 * self if odd
         if self.parity:
             point = -1 * self
         else:
             point = self
+        # if the sig's R is the point at infinity, return False
         if schnorr_sig.r.x is None:
             return False
-        message = schnorr_sig.r.xonly() + point.xonly() + msg
-        challenge = big_endian_to_int(hash_challenge(message)) % N
-        result = -challenge * point + schnorr_sig.s
+        # commitment is R||P||m use the xonly serializations
+        commitment = schnorr_sig.r.xonly() + point.xonly() + msg
+        # hash_challenge the commitment and interpret as big endian modded by N
+        challenge = big_endian_to_int(hash_challenge(commitment)) % N
+        # -hP+sG is what we want
+        result = -challenge * point + schnorr_sig.s * G
+        # make sure the resulting point is not the point at infinity
         if result.x is None:
             return False
+        # make sure the resulting point is not odd
         if result.parity:
             return False
+        # check that the xonly of the result is the same as the xonly of R
         return result.xonly() == schnorr_sig.r.xonly()
 
     @classmethod
