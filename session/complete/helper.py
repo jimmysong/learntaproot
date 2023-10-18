@@ -3,7 +3,6 @@ import hmac
 import re
 
 from base64 import b64decode, b64encode
-from pbkdf2 import PBKDF2
 from unittest import TestSuite, TextTestRunner
 
 try:
@@ -257,133 +256,8 @@ def merkle_root(hashes):
     return current_level[0]
 
 
-def bit_field_to_bytes(bit_field):
-    if len(bit_field) % 8 != 0:
-        raise RuntimeError("bit_field does not have a length that is divisible by 8")
-    result = bytearray(len(bit_field) // 8)
-    for i, bit in enumerate(bit_field):
-        byte_index, bit_index = divmod(i, 8)
-        if bit:
-            result[byte_index] |= 1 << bit_index
-    return bytes(result)
-
-
-def bytes_to_bit_field(some_bytes):
-    flag_bits = []
-    # iterate over each byte of flags
-    for byte in some_bytes:
-        # iterate over each bit, right-to-left
-        for _ in range(8):
-            # add the current bit (byte & 1)
-            flag_bits.append(byte & 1)
-            # rightshift the byte 1
-            byte >>= 1
-    return flag_bits
-
-
-def murmur3(data, seed=0):
-    """from http://stackoverflow.com/questions/13305290/is-there-a-pure-python-implementation-of-murmurhash"""
-    c1 = 0xCC9E2D51
-    c2 = 0x1B873593
-    length = len(data)
-    h1 = seed
-    roundedEnd = length & 0xFFFFFFFC  # round down to 4 byte block
-    for i in range(0, roundedEnd, 4):
-        # little endian load order
-        k1 = (
-            (data[i] & 0xFF)
-            | ((data[i + 1] & 0xFF) << 8)
-            | ((data[i + 2] & 0xFF) << 16)
-            | (data[i + 3] << 24)
-        )
-        k1 *= c1
-        k1 = (k1 << 15) | ((k1 & 0xFFFFFFFF) >> 17)  # ROTL32(k1,15)
-        k1 *= c2
-        h1 ^= k1
-        h1 = (h1 << 13) | ((h1 & 0xFFFFFFFF) >> 19)  # ROTL32(h1,13)
-        h1 = h1 * 5 + 0xE6546B64
-    # tail
-    k1 = 0
-    val = length & 0x03
-    if val == 3:
-        k1 = (data[roundedEnd + 2] & 0xFF) << 16
-    # fallthrough
-    if val in [2, 3]:
-        k1 |= (data[roundedEnd + 1] & 0xFF) << 8
-    # fallthrough
-    if val in [1, 2, 3]:
-        k1 |= data[roundedEnd] & 0xFF
-        k1 *= c1
-        k1 = (k1 << 15) | ((k1 & 0xFFFFFFFF) >> 17)  # ROTL32(k1,15)
-        k1 *= c2
-        h1 ^= k1
-    # finalization
-    h1 ^= length
-    # fmix(h1)
-    h1 ^= (h1 & 0xFFFFFFFF) >> 16
-    h1 *= 0x85EBCA6B
-    h1 ^= (h1 & 0xFFFFFFFF) >> 13
-    h1 *= 0xC2B2AE35
-    h1 ^= (h1 & 0xFFFFFFFF) >> 16
-    return h1 & 0xFFFFFFFF
-
-
-def hmac_sha512(key, msg):
-    return hmac.HMAC(key=key, msg=msg, digestmod=hashlib.sha512).digest()
-
-
-def hmac_sha512_kdf(msg, salt):
-    return PBKDF2(
-        msg,
-        salt,
-        iterations=PBKDF2_ROUNDS,
-        macmodule=hmac,
-        digestmodule=hashlib.sha512,
-    ).read(64)
-
-
-def base64_encode(b):
-    return b64encode(b).decode("ascii")
-
-
-def base64_decode(s):
-    return b64decode(s)
-
-
 def serialize_key_value(key, value):
     return encode_varstr(key) + encode_varstr(value)
-
-
-def child_to_path(child_number):
-    if child_number >= 0x80000000:
-        hardened = "'"
-        index = child_number - 0x80000000
-    else:
-        hardened = ""
-        index = child_number
-    return f"/{index}{hardened}"
-
-
-def path_network(root_path):
-    components = root_path.split("/")
-    if len(components) < 2:
-        return "mainnet"
-    elif components[1] in ("44'", "84'", "48'") and components[2] == "1'":
-        return "testnet"
-    else:
-        return "mainnet"
-
-
-def parse_binary_path(bin_path):
-    if len(bin_path) % 4 != 0:
-        raise ValueError(f"Not a valid binary path: {bin_path.hex()}")
-    path_data = bin_path
-    path = "m"
-    while len(path_data):
-        child_number = little_endian_to_int(path_data[:4])
-        path += child_to_path(child_number)
-        path_data = path_data[4:]
-    return path
 
 
 def bits_to_target(bits):

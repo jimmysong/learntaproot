@@ -378,16 +378,18 @@ True
 * Requires OP_1 and 32 bytes
 * The 32 bytes are an $x$-only public key $Q$ (external public key)
 * KeyPath spend's public key is $P$ (internal public key)
-* The Merkle Root of the ScriptPath Spend is $t$ for tweak
+* The Merkle Root of the ScriptPath Spend combined with the internal public key generates the tweak ($t$)
 * $Q=P+tG$
 #endmarkdown
 #markdown
 # How to spend from the KeyPath
-* You have to know the tweak $t$, the Merkle Root of the ScriptPath
+* You have to know the Merkle Root of the ScriptPath
+* The internal public key is hashed together with the Merkle Root to generate the tweak $t$
+* The formula is $t=H(P||t)$ where H is a Tagged Hash (TapTweak)
 * $Q=P+tG$, and $eG=P$ which means $Q=eG+tG$ and $Q=(e+t)G$
 * $e+t$ is your private key, which can sign for the public key Q
 * Witness only needs the Schnorr Signature
-* If you don't want a script path, $t=H(P)$ where $H$ is another Tagged Hash (TapTweak)
+* If you don't want a script path, $t$ is just empty
 #endmarkdown
 #code
 >>> # Example Q calculation for a single-key
@@ -482,7 +484,7 @@ tb1pfx2ys8pzcg0mdufk9v25hphv85zgjpv5kyn6uevdmfmvdsw0ea0qyvv87u
 * We need the tweak $t$ and the private key $e$ to be able to sign the transaction
 * The pubkey is in the UTXO as an $x$-only key
 * All we need is the Schnorr Signature in the Witness field
-* We use the `sign_schnorr` method in the `PrivateKey` to do this.
+* We use the <code>sign_schnorr</code> method in the <code>PrivateKey</code> to do this.
 #endmarkdown
 #markdown
 # Spending plan
@@ -578,34 +580,6 @@ True
 * Consumes the top three elements: a pubkey, a number, and a signature.
 * Valid sig, returns the number+1 to the stack
 * Invalid sig, returns the number back to the stack
-![](assets/op_checksigadd.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig1.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig2.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig3.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig4.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig5.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig6.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig7.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig8.png)
-#endmarkdown
-#markdown
-![](assets/examplemultisig9.png)
 #endmarkdown
 #unittest
 op:TapScriptTest:test_opchecksigadd:
@@ -667,7 +641,7 @@ Make a TapScript for 4-of-4 using pubkeys from private keys which correspond to 
 #markdown
 # TapLeaf
 * These are the leaves of the Merkle Tree
-* Has a TapLeaf Version (`0xc0`) and TapScript
+* Has a TapLeaf Version (<code>0xc0</code>) and TapScript
 * Any Leaf can be executed to satisfy the Taproot Script Path
 * Hash of a TapLeaf is a Tagged Hash (TapLeaf) of the version + TapScript
 #endmarkdown
@@ -795,7 +769,7 @@ taproot:TapRootTest:test_tapbranch_hash:
 #markdown
 # Computing the Merkle Root
 * The Merkle Root is the hash of the root element of the Merkle Tree
-* For TapLeaf: TapLeaf Version followed by the tagged hash (TapLeaf) of the TapScript
+* For TapLeaf: Tagged hash (TapLeaf) of TapLeaf Version followed by the TapScript
 * For TapBranch: Tagged hash (TapBranch) of the sorted children (left and right)
 * It doesn't have to be the hash of anything, just has to be 32 bytes
 #endmarkdown
@@ -858,17 +832,16 @@ Calculate the External PubKey for a Taproot output whose internal pubkey is 9090
 #endexercise
 #markdown
 # Script Path Spending
-* Reveal the internal public key
-* Calculate the Merkle Root starting from the TapScript combining with the Merkle Proof
-* The internal public key and Merkle Proof are in the Control Block, which must be the last element of the Witness
-* The combination of the Merkle Root and Internal Public Key gets us the External Public Key, which we can check in the UTXO
-* Reveal the TapScript whose hash is part of the Merkle Root, this must be the second to last element of the Witness
+* Merkle Proof and Internal Public Key in the Control Block (last element of Witness)
+* TapScript is the second-to-last element of the Witness
 * Unlock/Satisfy the TapScript, which are the other elements of the Witness
+* Combine the TapScript and the Merkle Proof to get the Merkle Root
+* Combine Merkle Root and Internal Public Key to get the External Public Key
 #endmarkdown
 #markdown
 # Control Block
 * Required for spending a TapScript, last element of Witness
-* TapScript Version (`0xc0` or `0xc1`)
+* TapScript Version (<code>0xc0</code> or <code>0xc1</code>)
 * The last bit expresses the parity of the external pubkey, which is necessary for batch verification
 * Internal PubKey $P$
 * Merkle Proof (list of hashes to combine to get to the Merkle Root)
@@ -945,12 +918,12 @@ taproot:TapRootTest:test_control_block:
 
 Create a Signet P2TR address with these Script Spend conditions:
 
-1. Internal Public Key is `cd04c1bf88ca891af152fc57c36523ab59efb16b7ec07caca0cfc4a1f2051d9e`
+1. Internal Public Key is <code>cd04c1bf88ca891af152fc57c36523ab59efb16b7ec07caca0cfc4a1f2051d9e</code>
 2. Leaf 1 and Leaf 2 make Branch 1, Branch 1 and Leaf 3 make Branch 2, which is the Merkle Root
 3. All TapLeaf are single key locked TapScripts (pubkey, OP_CHECKSIG)
 4. Leaf 1 uses your xonly pubkey
-5. Leaf 2 uses this xonly pubkey: `331a8f6a14e1b41a6b523ddb505fbc0662a6446bd42408692497297d3474aeec`
-6. Leaf 3 uses this xonly pubkey: `158a49d62c384c539a453e41a70214cfb85184954ae5c8df4b47eb74d58ff16f`
+5. Leaf 2 uses this xonly pubkey: <code>331a8f6a14e1b41a6b523ddb505fbc0662a6446bd42408692497297d3474aeec</code>
+6. Leaf 3 uses this xonly pubkey: <code>158a49d62c384c539a453e41a70214cfb85184954ae5c8df4b47eb74d58ff16f</code>
 
 ----
 >>> from ecc import PrivateKey, S256Point
@@ -1020,7 +993,7 @@ True
 #endexercise
 #exercise
 
-Now spend this output using the script path from the second TapLeaf send it all to `tb1q7kn55vf3mmd40gyj46r245lw87dc6us5n50lrg`
+Now spend this output using the script path from the second TapLeaf send it all to <code>tb1q7kn55vf3mmd40gyj46r245lw87dc6us5n50lrg</code>
 
 ----
 >>> from ecc import PrivateKey, S256Point
