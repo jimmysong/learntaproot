@@ -780,7 +780,10 @@ def op_checksigadd_schnorr(stack, tx_obj, input_index):
     # pop off the signature
     # parse the pubkey
     # if the signature has 0 length, it's not valid
-    # we handle the hash type here
+    # if the length of the signature is 65
+    # otherwise, hash_type is None
+        # hash_type is the last byte
+        # signature is the other 64 bytes
     # parse the Schnorr signature
     # get the message from the tx_obj.sig_hash
     # verify the Schnorr signature

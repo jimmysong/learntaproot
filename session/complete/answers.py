@@ -32,14 +32,14 @@ What is the tagged hash "BIP0340/aux" of "hello world"?
 ----
 
 >>> from hash import sha256
->>> # define the challenge tag and the message
->>> challenge_tag = b"BIP0340/aux"  #/
+>>> # define the aux tag and the message
+>>> aux_tag = b"BIP0340/aux"  #/
 >>> msg = b"hello world"  #/
->>> # calculate the challenge tag hash using sha256
->>> challenge_tag_hash = sha256(challenge_tag)  #/
->>> # calculate the hash of the challenge
->>> hash_challenge = sha256(challenge_tag_hash + challenge_tag_hash + msg)  #/
->>> print(hash_challenge.hex())  #/
+>>> # calculate the aux tag hash using sha256
+>>> aux_tag_hash = sha256(aux_tag)  #/
+>>> # calculate the hash of the aux
+>>> hash_aux = sha256(aux_tag_hash + aux_tag_hash + msg)  #/
+>>> print(hash_aux.hex())  #/
 1d721a19d161e978e7436d9e73bb810a0a32cbdffc7a9b29e11713b1940a4126
 
 #endexercise
@@ -226,8 +226,8 @@ ecc:SchnorrTest:test_sign:
 # Batch Verification
 * $e_iG=P_i$, $m_i$ message, $H$
 * Signature is $(R_i,s_i)$, $h_i=H(R_i||P_i||m_i)$
-* $-h_i P_1+s_1G=R_1$
-* $-h_i P_2+s_2G=R_2$
+* $-h_1 P_1+s_1G=R_1$
+* $-h_2 P_2+s_2G=R_2$
 * $-h_1 P_1-h_2 P_1+(s_1+s_2)G=R_1+R_2$
 * $(s_1+s_2)G=R_1+R_2+h_1 P_1+h_2 P_2$
 #endmarkdown
@@ -362,7 +362,7 @@ Write down your address at [this link](https://docs.google.com/spreadsheets/d/1w
 ----
 >>> from ecc import PrivateKey
 >>> from helper import sha256
->>> my_email = b"jimmy@programmingblockchain.com"  #/my_secret = b"<fill this in with your email>"
+>>> my_email = b"jimmy@programmingblockchain.com"  #/my_email = b"<fill this in with your email>"
 >>> my_secret = big_endian_to_int(sha256(my_email))
 >>> # create the private key object
 >>> priv = PrivateKey(my_secret)  #/

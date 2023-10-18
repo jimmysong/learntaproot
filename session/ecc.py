@@ -298,7 +298,6 @@ class S256Point(Point):
         h160 = self.hash160(compressed)
         # avoid circular dependency
         from script import P2PKHScriptPubKey
-
         return P2PKHScriptPubKey(h160)
 
     def p2wpkh_script(self):
@@ -306,7 +305,6 @@ class S256Point(Point):
         h160 = self.hash160(True)
         # avoid circular dependency
         from script import P2WPKHScriptPubKey
-
         return P2WPKHScriptPubKey(h160)
 
     def p2sh_p2wpkh_redeem_script(self):
@@ -316,12 +314,9 @@ class S256Point(Point):
     def p2tr_script(self, merkle_root=b""):
         """Returns the p2tr ScriptPubKey object"""
         # avoid circular dependency
-        from script import P2TRScriptPubKey
-
         # get the external pubkey
-        external_pubkey = self.tweaked_key(merkle_root)
         # return the P2TRScriptPubKey object
-        return P2TRScriptPubKey(external_pubkey)
+        raise NotImplementedError
 
     def address(self, compressed=True, network="mainnet"):
         """Returns the p2pkh address string"""
@@ -363,27 +358,14 @@ class S256Point(Point):
 
     def verify_schnorr(self, msg, schnorr_sig):
         # define point as self if it's even, -1 * self if odd
-        if self.parity:
-            point = -1 * self
-        else:
-            point = self
         # if the sig's R is the point at infinity, return False
-        if schnorr_sig.r.x is None:
-            return False
         # commitment is R||P||m use the xonly serializations
-        commitment = schnorr_sig.r.xonly() + point.xonly() + msg
         # hash_challenge the commitment and interpret as big endian modded by N
-        challenge = big_endian_to_int(hash_challenge(commitment)) % N
         # -hP+sG is what we want
-        result = -challenge * point + schnorr_sig.s * G
         # make sure the resulting point is not the point at infinity
-        if result.x is None:
-            return False
         # make sure the resulting point is not odd
-        if result.parity:
-            return False
         # check that the xonly of the result is the same as the xonly of R
-        return result.xonly() == schnorr_sig.r.xonly()
+        raise NotImplementedError
 
     @classmethod
     def parse(cls, binary):

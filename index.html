@@ -41,7 +41,7 @@
     <ul>
       <li class="fragment"><strong>Learn Schnorr Signatures</strong>
       <li class="fragment"><strong>Learn Taproot Key Path Spend</strong>
-      <li class="fragment"><strong>Learvn Taprvoot Script Path Spend</strong>
+      <li class="fragment"><strong>Learn Taproot Script Path Spend</strong>
     </ul>
   </section>
 </section>
@@ -103,8 +103,8 @@
       <li class="fragment">Each hash is different so that hashes cannot feasibly collide
       <li class="fragment">There are 10 different contexts, each creating its own set of hashes
       <li class="fragment">The hash is SHA256, but with 64 bytes before the actual bytes being hashed
-      <li class="fragment">The 64 bytes are another SHA256 of the tag (e.g. "BIP340/aux") repeated twice
-      <li class="fragment">H_aux(x) = SHA256(SHA256("BIP340/aux") + SHA256("BIP340/aux") + x)
+      <li class="fragment">The 64 bytes are another SHA256 of the tag (e.g. "BIP0340/aux") repeated twice
+      <li class="fragment">H_aux(x) = SHA256(SHA256("BIP0340/aux") + SHA256("BIP0340/aux") + x)
     </ul>
   </section>
   <section>
@@ -185,7 +185,7 @@ print(pubkey.xonly() == pubkey2.xonly())
     </ul>
   </section>
   <section>
-    <h2>$x$-only Keys</h2>
+    <h2>Example Schnorr Verification</h2>
     <pre><code data-trim data-noescape class="python">
 from ecc import S256Point, SchnorrSignature, G, N
 from helper import sha256, big_endian_to_int
@@ -282,8 +282,8 @@ print(sig.serialize().hex())
     <ul>
       <li class="fragment">$e_iG=P_i$, $m_i$ message, $H$
       <li class="fragment">Signature is $(R_i,s_i)$, $h_i=H(R_i||P_i||m_i)$
-      <li class="fragment">$-h_i P_1+s_1G=R_1$
-      <li class="fragment">$-h_i P_2+s_2G=R_2$
+      <li class="fragment">$-h_1 P_1+s_1G=R_1$
+      <li class="fragment">$-h_2 P_2+s_2G=R_2$
       <li class="fragment">$-h_1 P_1-h_2 P_1+(s_1+s_2)G=R_1+R_2$
       <li class="fragment">$(s_1+s_2)G=R_1+R_2+h_1 P_1+h_2 P_2$
     </ul>
@@ -381,12 +381,12 @@ print(sig.serialize().hex())
     <h2>How to spend from the KeyPath</h2>
     <ul>
       <li class="fragment">You have to know the Merkle Root of the ScriptPath
-      <li class="fragment">The internal public key is hashed together with the Merkle Root to generate the tweak $t$
-      <li class="fragment">The formula is $t=H(P||t)$ where H is a Tagged Hash (TapTweak)
+      <li class="fragment">The internal public key is hashed together with the Merkle Root $m$ to generate the tweak $t$
+      <li class="fragment">The formula is $t=H(P||m)$ where H is a Tagged Hash (TapTweak)
       <li class="fragment">$Q=P+tG$, and $eG=P$ which means $Q=eG+tG$ and $Q=(e+t)G$
       <li class="fragment">$e+t$ is your private key, which can sign for the public key Q
       <li class="fragment">Witness only needs the Schnorr Signature
-      <li class="fragment">If you don't want a script path, $t$ is just empty
+      <li class="fragment">If you don't want a script path, $m$ is the empty string
     </ul>
   </section>
   <section>
@@ -470,7 +470,7 @@ print(internal_pubkey.p2tr_address(network="signet"))
 # Spending from a p2tr
 from ecc import PrivateKey, N
 from helper import sha256
-from script import address_to_script_pubkey
+from script import address_to_script_pubkey, big_endian_to_int
 from tx import Tx, TxIn, TxOut
 my_email = b"jimmy@programmingblockchain.com"
 my_secret = big_endian_to_int(sha256(my_email))
@@ -484,7 +484,7 @@ target_script_pubkey = address_to_script_pubkey(target_address)
 target_amount = tx_in.value(network="signet") - fee
 tx_out = TxOut(target_amount, target_script_pubkey)
 tx_obj = Tx(1, [tx_in], [tx_out], network="signet", segwit=True)
-tweaked_secret = (priv.secret + priv.point.default_tweak()) % N
+tweaked_secret = (priv.secret + big_endian_to_int(priv.point.tweak())) % N
 tweaked_key = PrivateKey(tweaked_secret)
 tx_obj.sign_p2tr_keypath(0, tweaked_key)
 print(tx_obj.serialize().hex())
@@ -1275,6 +1275,10 @@ print(internal_pubkey.p2tr_address(current, network="signet"))
     </ul>
     <p>Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction" target="_mempool">Mempool Signet</a> to broadcast your transactions</p>
 
+  </section>
+  <section>
+    <h2>Feedback</h2>
+    <h3>Please send to @jimmysong on telegram</h3>
   </section>
 </section>
 </div>

@@ -789,9 +789,12 @@ def op_checksigadd_schnorr(stack, tx_obj, input_index):
     if len(signature) == 0:
         stack.append(encode_num(n))
         return True
-    # we handle the hash type here
+    # if the length of the signature is 65
+    # otherwise, hash_type is None
     if len(signature) == 65:
+        # hash_type is the last byte
         hash_type = signature[-1]
+        # signature is the other 64 bytes
         signature = signature[:-1]
     else:
         hash_type = None

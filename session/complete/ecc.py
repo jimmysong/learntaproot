@@ -304,7 +304,6 @@ class S256Point(Point):
         h160 = self.hash160(compressed)
         # avoid circular dependency
         from script import P2PKHScriptPubKey
-
         return P2PKHScriptPubKey(h160)
 
     def p2wpkh_script(self):
@@ -312,7 +311,6 @@ class S256Point(Point):
         h160 = self.hash160(True)
         # avoid circular dependency
         from script import P2WPKHScriptPubKey
-
         return P2WPKHScriptPubKey(h160)
 
     def p2sh_p2wpkh_redeem_script(self):
@@ -323,7 +321,6 @@ class S256Point(Point):
         """Returns the p2tr ScriptPubKey object"""
         # avoid circular dependency
         from script import P2TRScriptPubKey
-
         # get the external pubkey
         external_pubkey = self.tweaked_key(merkle_root)
         # return the P2TRScriptPubKey object
