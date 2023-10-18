@@ -4,7 +4,6 @@ from urllib.request import Request, urlopen
 import json
 
 from bech32 import decode_bech32
-from ecc import SchnorrSignature
 from hash import hash_tapsighash
 from helper import (
     big_endian_to_int,

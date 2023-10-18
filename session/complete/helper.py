@@ -1,8 +1,6 @@
 import hashlib
-import hmac
 import re
 
-from base64 import b64decode, b64encode
 from unittest import TestSuite, TextTestRunner
 
 try:

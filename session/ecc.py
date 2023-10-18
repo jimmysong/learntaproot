@@ -40,7 +40,7 @@ class FieldElement:
         # this should be the inverse of the == operator
         return not (self == other)
 
-    def __repr__(self):
+    def __reprv__(self):
         return f"FieldElement_{self.prime}({self.num})"
 
     def __add__(self, other):
@@ -220,7 +220,7 @@ class S256Field(FieldElement):
 class S256Point(Point):
     def __init__(self, x, y, a=None, b=None):
         a, b = S256Field(A), S256Field(B)
-        if type(x) == int:
+        if isinstance(x, int):
             super().__init__(x=S256Field(x), y=S256Field(y), a=a, b=b)
         else:
             super().__init__(x=x, y=y, a=a, b=b)
@@ -247,7 +247,7 @@ class S256Point(Point):
 
     def __add__(self, other):
         """If other is an int, multiplies scalar by generator, adds result to current point"""
-        if type(other) == int:
+        if isinstance(other, int):
             return super().__add__(other * G)
         else:
             return super().__add__(other)
@@ -276,13 +276,13 @@ class S256Point(Point):
         # otherwise, convert the x coordinate to Big Endian 32 bytes
         return int_to_big_endian(self.x.num, 32)
 
-    def tweak(self, merkle_root=b''):
+    def tweak(self, merkle_root=b""):
         """returns the tweak for use in p2tr if there's no script path"""
         # take the hash_taptweak of the xonly
         tweak = hash_taptweak(self.xonly() + merkle_root)
         return tweak
 
-    def tweaked_key(self, merkle_root=b''):
+    def tweaked_key(self, merkle_root=b""):
         """Creates the tweaked external key for a particular tweak."""
         # Get the tweak from the tweak method
         tweak = self.tweak(merkle_root)
@@ -319,10 +319,11 @@ class S256Point(Point):
         """Returns the RedeemScript for a p2sh-p2wpkh redemption"""
         return self.p2wpkh_script().redeem_script()
 
-    def p2tr_script(self, merkle_root=b''):
+    def p2tr_script(self, merkle_root=b""):
         """Returns the p2tr ScriptPubKey object"""
         # avoid circular dependency
         from script import P2TRScriptPubKey
+
         # get the external pubkey
         external_pubkey = self.tweaked_key(merkle_root)
         # return the P2TRScriptPubKey object
@@ -340,7 +341,7 @@ class S256Point(Point):
         """Returns the p2sh-p2wpkh base58 address string"""
         return self.p2wpkh_script().p2sh_address(network)
 
-    def p2tr_address(self, merkle_root=b'', network="mainnet"):
+    def p2tr_address(self, merkle_root=b"", network="mainnet"):
         """Returns the p2tr bech32m address string"""
         return self.p2tr_script(merkle_root).address(network)
 
@@ -463,34 +464,52 @@ class TapRootTest(TestCase):
         hex_x = "f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f"
         bytes_x = bytes.fromhex(hex_x)
         point = S256Point.parse(bytes_x)
-        self.assertEqual(big_endian_to_int(point.tweak()), 67856885919469038205338506436839711332207972226461300386890540598589929564995)
+        self.assertEqual(
+            big_endian_to_int(point.tweak()),
+            67856885919469038205338506436839711332207972226461300386890540598589929564995,
+        )
 
     def test_tweaked_key(self):
         hex_x = "f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f"
         bytes_x = bytes.fromhex(hex_x)
         point = S256Point.parse(bytes_x)
-        self.assertEqual(point.tweaked_key().xonly().hex(), "5b9cfb912266844a6265820f268052b6c500a94ae498c8b50acc8f1c43db9daf")
+        self.assertEqual(
+            point.tweaked_key().xonly().hex(),
+            "5b9cfb912266844a6265820f268052b6c500a94ae498c8b50acc8f1c43db9daf",
+        )
 
     def test_p2tr_script(self):
         hex_x = "f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f"
         bytes_x = bytes.fromhex(hex_x)
         point = S256Point.parse(bytes_x)
-        self.assertEqual(point.p2tr_script().__repr__(), "OP_1 5b9cfb912266844a6265820f268052b6c500a94ae498c8b50acc8f1c43db9daf")
+        self.assertEqual(
+            point.p2tr_script().__repr__(),
+            "OP_1 5b9cfb912266844a6265820f268052b6c500a94ae498c8b50acc8f1c43db9daf",
+        )
 
 
 class SchnorrTest(TestCase):
     def test_verify(self):
         msg = sha256(b"I attest to understanding Schnorr Signatures")
-        sig_raw = bytes.fromhex("f3626c99fe36167e5fef6b95e5ed6e5687caa4dc828986a7de8f9423c0f77f9bc73091ed86085ce43de0e255b3d0afafc7eee41ddc9970c3dc8472acfcdfd39a")
+        sig_raw = bytes.fromhex(
+            "f3626c99fe36167e5fef6b95e5ed6e5687caa4dc828986a7de8f9423c0f77f9bc73091ed86085ce43de0e255b3d0afafc7eee41ddc9970c3dc8472acfcdfd39a"
+        )
         sig = SchnorrSignature.parse(sig_raw)
-        point = S256Point.parse(bytes.fromhex("f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f"))
+        point = S256Point.parse(
+            bytes.fromhex(
+                "f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f"
+            )
+        )
         self.assertTrue(point.verify_schnorr(msg, sig))
 
     def test_sign(self):
         msg = sha256(b"I attest to understanding Schnorr Signatures")
         priv = PrivateKey(12345)
         sig = priv.sign_schnorr(msg)
-        self.assertEqual(sig.serialize().hex(), "f3626c99fe36167e5fef6b95e5ed6e5687caa4dc828986a7de8f9423c0f77f9bc73091ed86085ce43de0e255b3d0afafc7eee41ddc9970c3dc8472acfcdfd39a")
+        self.assertEqual(
+            sig.serialize().hex(),
+            "f3626c99fe36167e5fef6b95e5ed6e5687caa4dc828986a7de8f9423c0f77f9bc73091ed86085ce43de0e255b3d0afafc7eee41ddc9970c3dc8472acfcdfd39a",
+        )
 
 
 class Signature:
@@ -691,7 +710,7 @@ class PrivateKey:
         # encode_base58_checksum the whole thing
         return encode_base58_checksum(prefix + secret_bytes + suffix)
 
-    def tweaked_key(self, merkle_root=b''):
+    def tweaked_key(self, merkle_root=b""):
         # get the tweak from the point's tweak method
         tweak = self.point.tweak(merkle_root)
         # t is the tweak interpreted as big endian
@@ -730,7 +749,6 @@ class PrivateKey:
 
 
 class PrivateKeyTest(TestCase):
-
     def test_tweaked_key(self):
         secret = randint(1, N)
         priv = PrivateKey(secret)
