@@ -41,9 +41,8 @@ class TapLeaf:
 
     def hash(self):
         # calculate what's getting hashed
-        content = int_to_byte(self.tapleaf_version) + self.tap_script.serialize()
         # return the hash_tapleaf of the content
-        return hash_tapleaf(content)
+        raise NotImplementedError
 
     def leaves(self):
         return [self]
@@ -79,13 +78,8 @@ class TapBranch:
 
     def hash(self):
         # get the left and right hashes
-        left_hash = self.left.hash()
-        right_hash = self.right.hash()
         # use hash_tapbranch on them in alphabetical order
-        if left_hash < right_hash:
-            return hash_tapbranch(left_hash + right_hash)
-        else:
-            return hash_tapbranch(right_hash + left_hash)
+        raise NotImplementedError
 
     def leaves(self):
         if self._leaves is None:
@@ -143,24 +137,16 @@ class ControlBlock:
 
     def merkle_root(self, tap_script):
         # create a TapLeaf from the tap_script and the tapleaf version in the control block
-        leaf = TapLeaf(tap_script, self.tapleaf_version)
         # initialize the hash with the leaf's hash
-        current = leaf.hash()
         # go through the hashes in self.hashes
-        for h in self.hashes:
             # set the current hash as the hash_tapbranch of the sorted hashes
-            if current < h:
-                current = hash_tapbranch(current + h)
-            else:
-                current = hash_tapbranch(h + current)
                 # return the current hash
-        return current
+        raise NotImplementedError
 
     def external_pubkey(self, tap_script):
         # get the Merkle Root using self.merkle_root
-        merkle_root = self.merkle_root(tap_script)
         # return the external pubkey using the tweaked_key method of internal pubkey
-        return self.internal_pubkey.tweaked_key(merkle_root)
+        raise NotImplementedError
 
     def serialize(self):
         s = int_to_byte(self.tapleaf_version + self.parity)

@@ -775,38 +775,18 @@ def op_checksigverify_schnorr(stack, tx_obj, input_index):
 
 def op_checksigadd_schnorr(stack, tx_obj, input_index):
     # check to see if there's at least 3 elements
-    if len(stack) < 3:
-        return False
     # pop off the pubkey
-    pubkey = stack.pop()
     # pop off the n
-    n = decode_num(stack.pop())
     # pop off the signature
-    signature = stack.pop()
     # parse the pubkey
-    point = S256Point.parse_xonly(pubkey)
     # if the signature has 0 length, it's not valid
-    if len(signature) == 0:
-        stack.append(encode_num(n))
-        return True
     # we handle the hash type here
-    if len(signature) == 65:
-        hash_type = signature[-1]
-        signature = signature[:-1]
-    else:
-        hash_type = None
     # parse the Schnorr signature
-    sig = SchnorrSignature.parse(signature)
     # get the message from the tx_obj.sig_hash
-    msg = tx_obj.sig_hash(input_index, hash_type)
     # verify the Schnorr signature
-    if point.verify_schnorr(msg, sig):
         # if valid, increment the n and push back on stack
-        stack.append(encode_num(n + 1))
-    else:
         # if invalid, push back n on stack
-        stack.append(encode_num(n))
-    return True
+    raise NotImplementedError
 
 
 def op_checkmultisig(stack, tx_obj, input_index):

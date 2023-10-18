@@ -271,27 +271,21 @@ class S256Point(Point):
     def xonly(self):
         """returns the binary version of X-only pubkey"""
         # if x is None, return 32 0 bytes
-        if self.x is None:
-            return b"\x00" * 32
         # otherwise, convert the x coordinate to Big Endian 32 bytes
-        return int_to_big_endian(self.x.num, 32)
+        raise NotImplementedError
 
     def tweak(self, merkle_root=b""):
         """returns the tweak for use in p2tr if there's no script path"""
         # take the hash_taptweak of the xonly and the merkle root
-        tweak = hash_taptweak(self.xonly() + merkle_root)
-        return tweak
+        raise NotImplementedError
 
     def tweaked_key(self, merkle_root=b""):
         """Creates the tweaked external key for a particular tweak."""
         # Get the tweak from the merkle root
-        tweak = self.tweak(merkle_root)
         # t is the tweak interpreted as big endian
-        t = big_endian_to_int(tweak)
         # Q = P + tG
-        external_key = self + t * G
         # return the external key
-        return external_key
+        raise NotImplementedError
 
     def hash160(self, compressed=True):
         # get the sec
@@ -634,42 +628,20 @@ class PrivateKey:
         # to a known value to make k deterministic
         # the idea of k generation here is to mix in the private key
         # and the msg to ensure it's unique and not reused
-        if aux is None:
-            aux = b"\x00" * 32
-        if self.point.parity:
-            d = N - self.secret
-        else:
-            d = self.secret
-        if len(msg) != 32:
-            raise ValueError("msg needs to be 32 bytes")
-        if len(aux) != 32:
-            raise ValueError("aux needs to be 32 bytes")
         # t contains the secret, msg is added so it's unique to the
         # message and private key
-        t = xor_bytes(int_to_big_endian(d, 32), hash_aux(aux))
-        k = big_endian_to_int(hash_nonce(t + self.point.xonly() + msg)) % N
         # get the resulting R=kG point
-        r = k * G
         # if R's y coordinate is odd, flip the k
-        if r.parity:
             # set k to N - k
-            k = N - k
             # recalculate R
-            r = k * G
         # calculate the commitment which is: R || P || msg
-        commitment = r.xonly() + self.point.xonly() + msg
         # hash_challenge the result and interpret as a big endian integer
         # mod the result by N and this is your e
-        e = big_endian_to_int(hash_challenge(commitment)) % N
         # calculate s which is (k+ed) mod N
-        s = (k + e * d) % N
         # create a SchnorrSignature object using the R and s
-        sig = SchnorrSignature(r, s)
         # check that this schnorr signature verifies
-        if not self.point.verify_schnorr(msg, sig):
-            raise RuntimeError("Bad Signature")
         # return the signature
-        return sig
+        raise NotImplementedError
 
     def deterministic_k(self, z):
         k = b"\x00" * 32
@@ -720,13 +692,10 @@ class PrivateKey:
 
     def tweaked_key(self, merkle_root=b""):
         # get the tweak from the point's tweak method
-        tweak = self.point.tweak(merkle_root)
         # t is the tweak interpreted as big endian
-        t = big_endian_to_int(tweak)
         # new secret is the secret plus t (make sure to mod by N)
-        new_secret = (self.secret + t) % N
         # create a new instance of this class using self.__class__
-        return self.__class__(new_secret)
+        raise NotImplementedError
 
     @classmethod
     def parse(cls, wif):
