@@ -24,8 +24,8 @@ Install virtualenv:
 
 # Download requirements
 
-    $ git clone https://github.com/jimmysong/learnhd
-    $ cd learnhd
+    $ git clone https://github.com/jimmysong/learntaproot
+    $ cd learntaproot
     $ virtualenv -p python3 .venv
 
 Linux/OSX:
