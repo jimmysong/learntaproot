@@ -24,6 +24,13 @@ reload({module})
 run({module}.{test_suite}('{test}'))'''
 
 
+UNITTEST_TEMPLATE_3 = """# Exercise {exercise_number}
+
+reload({module})
+reload(script)
+run({module}.{test_suite}('{test}'))"""
+
+
 EXERCISE_TEMPLATE_1 = '''### Exercise {exercise_number}
 {instructions}'''
 
@@ -119,7 +126,11 @@ for session in sessions:
                     markdown_cell.metadata['slideshow'] = dict(slide_type='slide')
                     cells.append(markdown_cell)
                     cells_complete.append(markdown_cell)
-                    code = UNITTEST_TEMPLATE_2.format(
+                    if module == "op":
+                        template = UNITTEST_TEMPLATE_3
+                    else:
+                        template = UNITTEST_TEMPLATE_2
+                    code = template.format(
                         exercise_number=exercise_number,
                         module=module,
                         path=path,

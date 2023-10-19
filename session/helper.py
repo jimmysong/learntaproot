@@ -3,6 +3,8 @@ import re
 
 from unittest import TestSuite, TextTestRunner
 
+from hash import sha256
+
 try:
     from csiphash import siphash24
 
@@ -99,15 +101,11 @@ def int_to_little_endian(n, length):
 
 
 def hash160(s):
-    return hashlib.new("ripemd160", hashlib.sha256(s).digest()).digest()
+    return hashlib.new("ripemd160", sha256(s)).digest()
 
 
 def hash256(s):
-    return hashlib.sha256(hashlib.sha256(s).digest()).digest()
-
-
-def sha256(s):
-    return hashlib.sha256(s).digest()
+    return sha256(sha256(s))
 
 
 def encode_base58(s):

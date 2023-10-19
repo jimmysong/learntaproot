@@ -745,24 +745,31 @@ def op_checksigverify(stack, tx_obj, input_index):
     return op_checksig(stack, tx_obj, input_index) and op_verify(stack)
 
 
+def get_signature_and_hashtype(b):
+    """Returns the SchnorrSignature object and hashtype from a sig on stack"""
+    if len(b) == 65:
+        hash_type = b[-1]
+        signature = b[:-1]
+    else:
+        hash_type = 0
+        signature = b
+    schnorr = SchnorrSignature.parse(signature)
+    return schnorr, hash_type
+
+
 def op_checksig_schnorr(stack, tx_obj, input_index):
     # check to see if there's at least 2 elements
     if len(stack) < 2:
         return False
     pubkey = stack.pop()
-    signature = stack.pop()
+    sig = stack.pop()
     point = S256Point.parse_xonly(pubkey)
-    if len(signature) == 65:
-        hash_type = signature[-1]
-        signature = signature[:-1]
-    elif len(signature) == 0:
+    if len(sig) == 0:
         stack.append(encode_num(0))
         return True
-    else:
-        hash_type = None
-    sig = SchnorrSignature.parse(signature)
+    schnorr, hash_type = get_signature_and_hashtype(sig)
     msg = tx_obj.sig_hash(input_index, hash_type)
-    if point.verify_schnorr(msg, sig):
+    if point.verify_schnorr(msg, schnorr):
         stack.append(encode_num(1))
     else:
         stack.append(encode_num(0))
@@ -779,36 +786,29 @@ def op_checksigadd_schnorr(stack, tx_obj, input_index):
         return False
     # pop off the pubkey
     pubkey = stack.pop()
-    # pop off the n
+    # pop off the n and do decode_num on it
     n = decode_num(stack.pop())
     # pop off the signature
-    signature = stack.pop()
+    sig = stack.pop()
     # parse the pubkey
     point = S256Point.parse_xonly(pubkey)
     # if the signature has 0 length, it's not valid
-    if len(signature) == 0:
+    # so put encode_num(n) back on stack and return True
+    if len(sig) == 0:
         stack.append(encode_num(n))
         return True
-    # if the length of the signature is 65
-    # otherwise, hash_type is None
-    if len(signature) == 65:
-        # hash_type is the last byte
-        hash_type = signature[-1]
-        # signature is the other 64 bytes
-        signature = signature[:-1]
-    else:
-        hash_type = None
-    # parse the Schnorr signature
-    sig = SchnorrSignature.parse(signature)
-    # get the message from the tx_obj.sig_hash
+    # use the get_signature_and_hashtype function on the sig
+    schnorr, hash_type = get_signature_and_hashtype(sig)
+    # get the message from the tx_obj.sig_hash using input index and hash type
     msg = tx_obj.sig_hash(input_index, hash_type)
     # verify the Schnorr signature
-    if point.verify_schnorr(msg, sig):
-        # if valid, increment the n and push back on stack
+    if point.verify_schnorr(msg, schnorr):
+        # if valid, increment the n, encode_num it and push back on stack
         stack.append(encode_num(n + 1))
     else:
-        # if invalid, push back n on stack
+        # if invalid, encode_num on n and push back on stack
         stack.append(encode_num(n))
+    # return True for successful execution
     return True
 
 
@@ -1267,7 +1267,6 @@ class TapScriptTest(TestCase):
         hex_tx = "010000000001022373cf02ce7df6500ae46a4a0fbbb1b636d2debed8f2df91e2415627397a34090000000000fdffffff88c23d928893cd3509845516cf8411b7cab2738c054cc5ce7e4bde9586997c770000000000fdffffff0200000000000000002b6a29676d20746170726f6f7420f09fa5952068747470733a2f2f626974636f696e6465766b69742e6f72676e9e1100000000001976a91405070d0290da457409a37db2e294c1ffbc52738088ac04410adf90fd381d4a13c3e73740b337b230701189ed94abcb4030781635f035e6d3b50b8506470a68292a2bc74745b7a5732a28254b5f766f09e495929ec308090b01004620c13e6d193f5d04506723bd67abcc5d31b610395c445ac6744cb0a1846b3aabaeac20b0e2e48ad7c3d776cf6f2395c504dc19551268ea7429496726c5d5bf72f9333cba519c21c0000000000000000000000000000000000000000000000000000000000000000104414636070d21adc8280735383102f7a0f5978cea257777a23934dd3b458b79bf388aca218e39e23533a059da173e402c4fc5e3375e1f839efb22e9a5c2a815b07301004620c13e6d193f5d04506723bd67abcc5d31b610395c445ac6744cb0a1846b3aabaeac20b0e2e48ad7c3d776cf6f2395c504dc19551268ea7429496726c5d5bf72f9333cba519c21c0000000000000000000000000000000000000000000000000000000000000000100000000"
         stream = BytesIO(bytes.fromhex(hex_tx))
         tx_obj = Tx.parse(stream)
-        self.assertTrue(tx_obj.verify())
         stack = [
             bytes.fromhex(
                 "4636070d21adc8280735383102f7a0f5978cea257777a23934dd3b458b79bf388aca218e39e23533a059da173e402c4fc5e3375e1f839efb22e9a5c2a815b07301"

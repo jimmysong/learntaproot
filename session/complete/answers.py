@@ -1,4 +1,8 @@
 """
+#code
+>>> import ecc, hash, op, script, taproot
+
+#endcode
 #markdown
 # Tagged Hashes
 * Each hash is different so that hashes cannot feasibly collide
@@ -7,13 +11,6 @@
 * The 64 bytes are another SHA256 of the tag (e.g. "BIP340/aux") repeated twice
 * H_aux(x) = SHA256(SHA256("BIP340/aux") + SHA256("BIP340/aux") + x)
 #endmarkdown
-#code
->>> import ecc
->>> import hash
->>> import op
->>> import taproot
-
-#endcode
 #code
 >>> # Example Tagged Hashes
 >>> from hash import sha256
@@ -37,8 +34,9 @@ What is the tagged hash "BIP0340/aux" of "hello world"?
 >>> msg = b"hello world"  #/
 >>> # calculate the aux tag hash using sha256
 >>> aux_tag_hash = sha256(aux_tag)  #/
->>> # calculate the hash of the aux
+>>> # calculate the hash of the aux sha256 of (aux hash + aux hash + msg)
 >>> hash_aux = sha256(aux_tag_hash + aux_tag_hash + msg)  #/
+>>> # print the hash's hex
 >>> print(hash_aux.hex())  #/
 1d721a19d161e978e7436d9e73bb810a0a32cbdffc7a9b29e11713b1940a4126
 
@@ -64,7 +62,7 @@ hash:HashTest:test_tagged_hash:
 f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f
 
 >>> pubkey2 = S256Point.parse(xonly)
->>> print(pubkey.xonly() == pubkey2.xonly())
+>>> print(pubkey.x == pubkey2.x)
 True
 
 #endcode
@@ -73,6 +71,7 @@ Find the $x$-only pubkey format for the private key with the secret 21,000,000
 
 ---
 >>> from ecc import PrivateKey
+>>> from helper import int_to_big_endian
 >>> secret = 21000000
 >>> # create a private key with the secret
 >>> priv = PrivateKey(secret)  #/
@@ -80,6 +79,7 @@ Find the $x$-only pubkey format for the private key with the secret 21,000,000
 >>> point = priv.point  #/
 >>> # convert the x coordinate to a big-endian integer 32 bytes
 >>> xonly = int_to_big_endian(point.x.num, 32)  #/
+>>> # print the hex of the xonly representation
 >>> print(xonly.hex())  #/
 e79c4eb45764bd015542f6779cc70fef44b7a2432f839264768288efab886291
 
@@ -91,25 +91,22 @@ ecc:XOnlyTest:test_xonly:
 # Schnorr Verification
 * $eG=P$, $m$ message, $kG=R$, $H$ is a hash function
 * Signature is $(R,s)$ where $s=k + e H(R||P||m)$
-* $$-H(R||P||m)P+sG \\ =-H(R||P||m)P+(k+e H(R||P||m))G \\ =-H(R||P||m)P+kG+H(R||P||m)(eG) \\ =R+H(R||P||m)P-H(R||P||m)P=R$$
+$$-H(R||P||m)P+sG$$
+$$=-H(R||P||m)P+(k+e H(R||P||m))G$$
+$$=-H(R||P||m)P+kG+H(R||P||m)(eG)$$
+$$=R+H(R||P||m)P-H(R||P||m)P=R$$
 #endmarkdown
 #code
 >>> from ecc import S256Point, SchnorrSignature, G, N
->>> from helper import sha256, big_endian_to_int
->>> from hash import hash_challenge
->>> # the message we're signing
+>>> from helper import big_endian_to_int
+>>> from hash import sha256, hash_challenge
 >>> msg = sha256(b"I attest to understanding Schnorr Signatures")
->>> # the signature we're using
 >>> sig_raw = bytes.fromhex("f3626c99fe36167e5fef6b95e5ed6e5687caa4dc828986a7de8f9423c0f77f9bc73091ed86085ce43de0e255b3d0afafc7eee41ddc9970c3dc8472acfcdfd39a")
 >>> sig = SchnorrSignature.parse(sig_raw)
->>> # the pubkey we are using
 >>> xonly = bytes.fromhex("f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f")
 >>> point = S256Point.parse(xonly)
->>> # calculate the commitment which is R || P || msg
 >>> commitment = sig.r.xonly() + point.xonly() + msg
->>> # hash_challenge the commitment, interpret as big endian and mod by N
 >>> challenge = big_endian_to_int(hash_challenge(commitment)) % N
->>> # the target is the -challenge * point + s * G
 >>> target = -challenge * point + sig.s * G
 >>> print(target == sig.r)
 True
@@ -128,16 +125,16 @@ Message = 1a84547db188f0b1d2c9f0beac230afebbd5e6e6c1a46fc69841815194bf8612
 >>> from hash import hash_challenge
 >>> from helper import big_endian_to_int
 >>> p_raw = bytes.fromhex("cbaa648dbfe734646ce958e2f14a874149fae4010fdeabde4bae6a732537fd91")
->>> pubkey = S256Point.parse(p_raw)
+>>> p = S256Point.parse(p_raw)
 >>> sig_raw = bytes.fromhex("2ae68f873376a0ff302258964632f7b98b21e3bbc72dcc8fb31de8acf01696b951f3dbb6fc5532558219472fb63e061f9a4c7d1760cc588da551c74374cd0de4")
 >>> sig = SchnorrSignature.parse(sig_raw)
 >>> msg = bytes.fromhex("1a84547db188f0b1d2c9f0beac230afebbd5e6e6c1a46fc69841815194bf8612")
 >>> # create the commitment: R || P || m (points should be xonly)
->>> commitment = sig.r.xonly() + pubkey.xonly() + msg  #/
->>> # hash the commitment with hash_challenge and then big_endian_to_int it
+>>> commitment = sig.r.xonly() + p.xonly() + msg  #/
+>>> # h is the hash_challenge of the commitment as a big endian int
 >>> h = big_endian_to_int(hash_challenge(commitment))  #/
 >>> # check that -hP+sG=R
->>> print(-h*pubkey + sig.s*G  == sig.r)  #/
+>>> print(-h*p + sig.s*G  == sig.r)  #/
 True
 
 #endexercise
@@ -147,28 +144,26 @@ ecc:SchnorrTest:test_verify:
 #markdown
 # Schnorr Signing
 * $eG=P$, $m$ message, $k$ random
-* $kG=R$, $H$ is a hash function
+* $kG=R$, $H$ is <code>hash_challenge</code.
 * $s=k+e H(R||P||m)$ where $R$ and $P$ are $x$-only
 * Signature is $(R,s)$
 #endmarkdown
 #code
 >>> # Example Signing
 >>> from ecc import PrivateKey, N, G
->>> from helper import sha256, big_endian_to_int
+>>> from hash import sha256, hash_challenge
+>>> from helper import big_endian_to_int
 >>> priv = PrivateKey(12345)
->>> if priv.point.y.num % 2 == 1:
-...     d = N - priv.secret
-... else:
-...     d = priv.secret
+>>> e = priv.even_secret()
 >>> msg = sha256(b"I attest to understanding Schnorr Signatures")
 >>> k = 21016020145315867006318399104346325815084469783631925097217883979013588851039
 >>> r = k * G
->>> if r.y.num % 2 == 1:
+>>> if r.parity:
 ...     k = N - k
 ...     r = k * G
 >>> commitment = r.xonly() + priv.point.xonly() + msg
->>> e = big_endian_to_int(hash_challenge(commitment)) % N
->>> s = (k + e * d) % N
+>>> h = big_endian_to_int(hash_challenge(commitment)) % N
+>>> s = (k + e * h) % N
 >>> sig = SchnorrSignature(r, s)
 >>> if not priv.point.verify_schnorr(msg, sig):
 ...     raise RuntimeError("Bad Signature")
@@ -183,39 +178,35 @@ Sign the message b"I'm learning Taproot!" with the private key 21,000,000
 ----
 
 >>> from ecc import PrivateKey, N, G
->>> from helper import sha256
->>> # create the private key
->>> priv = PrivateKey(21000000)  #/
->>> # calculate d (working secret) based on whether the y is even or odd
->>> if priv.point.y.num % 2 == 1:
-...     d = N - priv.secret
-... else:
-...     d = priv.secret
->>> # create the message
->>> msg = sha256(b"I'm learning Taproot!")  #/
+>>> from hash import sha256, hash_challenge
+>>> from helper import big_endian_to_int
+>>> priv = PrivateKey(21000000)
+>>> msg = sha256(b"I'm learning Taproot!")
 >>> # We'll learn more about k later, for now use 987654321
 >>> k = 987654321
->>> # get the resulting R=kG point
+>>> # get e using the even_secret method on the private key
+>>> e = priv.even_secret() #/
+>>> # calculate R which is kG
 >>> r = k * G  #/
->>> # if R's y coordinate is odd, flip the k
->>> if r.y.num % 2 == 1:  #/
+>>> # if R's y coordinate is odd (use the parity property), flip the k
+>>> if r.parity:  #/
 ...     # set k to N - k
 ...     k = N - k  #/
 ...     # recalculate R
 ...     r = k * G  #/
 >>> # calculate the commitment which is: R || P || msg
 >>> commitment = r.xonly() + priv.point.xonly() + msg  #/
->>> # hash_challenge the result and interpret as a big endian integer mod the result by N and this is your e
->>> e = big_endian_to_int(hash_challenge(commitment)) % N  #/
->>> # calculate s which is (k+ed) mod N
->>> s = (k + e * d) % N  #/
+>>> # h is the hash_challenge of the commitment as a big endian integer mod N
+>>> h = big_endian_to_int(hash_challenge(commitment)) % N  #/
+>>> # calculate s which is (k+eh) mod N
+>>> s = (k + e * h) % N  #/
 >>> # create a SchnorrSignature object using the R and s
->>> sig = SchnorrSignature(r, s)  #/
+>>> schnorr = SchnorrSignature(r, s)  #/
 >>> # check that this schnorr signature verifies
->>> if not priv.point.verify_schnorr(msg, sig):  #/
+>>> if not priv.point.verify_schnorr(msg, schnorr):  #/
 ...     raise RuntimeError("Bad Signature")  #/
 >>> # print the serialized hex of the signature
->>> print(sig.serialize().hex())  #/
+>>> print(schnorr.serialize().hex())  #/
 5ad2703f5b4f4b9dea4c28fa30d86d3781d28e09dd51aae1208de80bb6155bee7d9dee36de5540efd633445a8d743816cbbc15fb8a1c7768984190d5b873a341
 
 #endexercise
@@ -265,10 +256,10 @@ Message 2 = af1c325abcb0cced3a4166ce67be1db659ae1dd574fe49b0f2941d8d4882d62c
 >>> # create the commitments: R_i||P_i||m_i
 >>> commitment_1 = sig1.r.xonly() + p1.xonly() + msg1  #/
 >>> commitment_2 = sig2.r.xonly() + p2.xonly() + msg2  #/
->>> # define the h's as the hash_challenge of the commitment as a big endian integer
->>> h1 = big_endian_to_int(hash_challenge(commitment_1))  #/
->>> h2 = big_endian_to_int(hash_challenge(commitment_2))  #/
->>> # compute the sum of the h_i P_i's
+>>> # h_i are the hash_challenge of the commitment as big endian ints mod N
+>>> h1 = big_endian_to_int(hash_challenge(commitment_1)) % N  #/
+>>> h2 = big_endian_to_int(hash_challenge(commitment_2)) % N  #/
+>>> # h is the sum of the h_i P_i's
 >>> h = h1*p1 + h2*p2  #/
 >>> # check that sG=R+h
 >>> print(s*G == r+h)  #/
@@ -276,14 +267,14 @@ True
 
 #endexercise
 #markdown
-# How to spend from the KeyPath
-* You have to know the Merkle Root of the ScriptPath
-* The internal public key is hashed together with the Merkle Root to generate the tweak $t$
-* The formula is $t=H(P||t)$ where H is a Tagged Hash (TapTweak)
+# Spending from the KeyPath
+* $m$ is the Merkle Root $m$ of the ScriptPath
+* Tweak $t$ and $P$ create $Q$, the external pubkey
+* $t=H(P||m)$ where $H$ is <code>hash_taptweak</code>
 * $Q=P+tG$, and $eG=P$ which means $Q=eG+tG$ and $Q=(e+t)G$
-* $e+t$ is your private key, which can sign for the public key Q
-* Witness only needs the Schnorr Signature
-* If you don't want a script path, $t$ is just empty
+* $e+t$ is your private key, which can sign for the $Q$
+* Witness has a single element, the Schnorr Signature
+* If you don't want a script path, $m$ is the empty string
 #endmarkdown
 #code
 >>> # Example Q calculation for a single-key
@@ -293,8 +284,8 @@ True
 >>> from script import P2TRScriptPubKey
 >>> internal_pubkey_raw = bytes.fromhex("cbaa648dbfe734646ce958e2f14a874149fae4010fdeabde4bae6a732537fd91")
 >>> internal_pubkey = S256Point.parse(internal_pubkey_raw)
->>> tweak = big_endian_to_int(hash_taptweak(internal_pubkey_raw))
->>> external_pubkey = internal_pubkey + tweak * G
+>>> t = big_endian_to_int(hash_taptweak(internal_pubkey_raw))
+>>> external_pubkey = internal_pubkey + t * G
 >>> script_pubkey = P2TRScriptPubKey(external_pubkey)
 >>> print(script_pubkey)
 OP_1 578444b411276eee17e2f69988d192b7e728f4375525a868f4a9c2b78e12af16
@@ -312,10 +303,10 @@ Make a P2TR ScriptPubKey using the private key 9284736473
 >>> priv = PrivateKey(9284736473)
 >>> # get the internal pubkey
 >>> internal_pubkey = priv.point  #/
->>> # calculate the tweak
->>> tweak = big_endian_to_int(hash_taptweak(internal_pubkey.xonly()))  #/
+>>> # t is the hash_taptweak of the internal pubkey xonly as a big endian integer
+>>> t = big_endian_to_int(hash_taptweak(internal_pubkey.xonly()))  #/
 >>> # Q = P + tG
->>> external_pubkey = internal_pubkey + tweak * G  #/
+>>> external_pubkey = internal_pubkey + t * G  #/
 >>> # use P2TRScriptPubKey to create the ScriptPubKey
 >>> script_pubkey = P2TRScriptPubKey(external_pubkey)  #/
 >>> # print the ScriptPubKey
@@ -334,12 +325,12 @@ ecc:TapRootTest:test_p2tr_script:
 #endunittest
 #markdown
 # P2TR Addresses
-* Uses Bech32m, which is different than Bech32 (BIP350)
 * Segwit v0 uses Bech32
 * Taproot (Segwit v1) uses Bech32m
+* Bech32m is different than Bech32 (BIP350)
 * Has error correcting capability and uses 32 letters/numbers
-* Segwit v0 addresses start with bc1q and p2wpkh is shorter than p2wsh
-* Segwit v1 addresses start with bc1p and they're all one length
+* Segwit v0 addresses start with <code>bc1q</code> and p2wpkh is shorter than p2wsh
+* Segwit v1 addresses start with <code>bc1p</code> and they're all one length
 #endmarkdown
 #code
 >>> # Example of getting a p2tr address
@@ -357,11 +348,12 @@ tb1p27zyfdq3yahwu9lz76vc35vjklnj3aph25j6s68548pt0rsj4utqgavay9
 
 Make your own Signet P2TR Address
 
-Write down your address at [this link](https://docs.google.com/spreadsheets/d/1wUNeR-g5qY_2lh18gxg5JIQr352fOW2wZia_QErj4V0/edit?usp=sharing) under "keypath address"
+Submit your address at [this link]()
 
 ----
 >>> from ecc import PrivateKey
->>> from helper import sha256
+>>> from hash import sha256
+>>> from helper import big_endian_to_int
 >>> my_email = b"jimmy@programmingblockchain.com"  #/my_email = b"<fill this in with your email>"
 >>> my_secret = big_endian_to_int(sha256(my_email))
 >>> # create the private key object
@@ -382,7 +374,8 @@ tb1pfx2ys8pzcg0mdufk9v25hphv85zgjpv5kyn6uevdmfmvdsw0ea0qyvv87u
 #code
 >>> # Spending from a p2tr
 >>> from ecc import PrivateKey, N
->>> from helper import sha256, big_endian_to_int
+>>> from hash import sha256
+>>> from helper import big_endian_to_int
 >>> from script import address_to_script_pubkey
 >>> from tx import Tx, TxIn, TxOut
 >>> my_email = b"jimmy@programmingblockchain.com"
@@ -414,22 +407,23 @@ ecc:PrivateKeyTest:test_tweaked_key:
 
 You have been sent 100,000 sats to your address on Signet. Send 40,000 sats back to <code>tb1q7kn55vf3mmd40gyj46r245lw87dc6us5n50lrg</code>, the rest to yourself.
 
-Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction" target="_mempool">Mempool Signet</a> to broadcast your transaction
+Use <a href="https://mempool.space/signet/tx/push" target="_mempool">Mempool Signet</a> to broadcast your transaction
 
 ----
 
 >>> from ecc import PrivateKey
->>> from helper import sha256
+>>> from hash import sha256
+>>> from helper import big_endian_to_int
 >>> from script import address_to_script_pubkey
 >>> from tx import Tx, TxIn, TxOut
->>> my_email = b"jimmy@programmingblockchain.com"  #/my_secret = b"<fill this in with your email>"
+>>> my_email = b"jimmy@programmingblockchain.com"  #/my_email = b"<fill this in with your email>"
 >>> my_secret = big_endian_to_int(sha256(my_email))
->>> priv = PrivateKey(my_secret)  #/
->>> prev_tx = bytes.fromhex("25096348891ff6b120b88c944501791f8809698474569cc994d63dc5bcfe6a37")  #/prev_tx = bytes.fromhex("<fill in from block explorer>")
+>>> priv = PrivateKey(my_secret)
 >>> target_address = "tb1q7kn55vf3mmd40gyj46r245lw87dc6us5n50lrg"
 >>> target_amount = 40000
 >>> fee = 500
->>> # fill this in from the block explorer
+>>> # fill the next two variables from the block explorer
+>>> prev_tx = bytes.fromhex("25096348891ff6b120b88c944501791f8809698474569cc994d63dc5bcfe6a37")  #/prev_tx = bytes.fromhex("<fill in from block explorer>")
 >>> prev_index = 0  #/prev_index = -1
 >>> # create the one input
 >>> tx_in = TxIn(prev_tx, prev_index)  #/
@@ -459,9 +453,39 @@ True
 * Valid sig, returns the number+1 to the stack
 * Invalid sig, returns the number back to the stack
 #endmarkdown
-#unittest
-op:TapScriptTest:test_opchecksigadd:
-#endunittest
+#code
+>>> def op_checksigadd_schnorr(stack, tx_obj, input_index):
+...     # check to see if there's at least 3 elements
+...     if len(stack) < 3:
+...         return False
+...     # pop off the pubkey
+...     pubkey = stack.pop()
+...     # pop off the n and do decode_num on it
+...     n = decode_num(stack.pop())
+...     # pop off the signature
+...     sig = stack.pop()
+...     # parse the pubkey
+...     point = S256Point.parse_xonly(pubkey)
+...     # if the signature has 0 length, it is not valid
+...     # so put encode_num(n) back on stack and return True
+...     if len(sig) == 0:
+...         stack.append(encode_num(n))
+...         return True
+...     # use the get_signature_and_hashtype function on the sig
+...     schnorr, hash_type = get_signature_and_hashtype(sig)
+...     # get the message from the tx_obj.sig_hash using input index and hash type
+...     msg = tx_obj.sig_hash(input_index, hash_type)
+...     # verify the Schnorr signature
+...     if point.verify_schnorr(msg, schnorr):
+...         # if valid, increment the n, encode_num it and push back on stack
+...         stack.append(encode_num(n + 1))
+...     else:
+...         # if invalid, encode_num on n and push back on stack
+...         stack.append(encode_num(n))
+...     # return True for successful execution
+...     return True
+
+#endcode
 #markdown
 # Example TapScripts
 * 1-of-1 (pay-to-pubkey) [pubkey, OP_CHECKSIG]
@@ -488,9 +512,9 @@ op:TapScriptTest:test_opchecksigadd:
 331a8f6a14e1b41a6b523ddb505fbc0662a6446bd42408692497297d3474aeec OP_CHECKSIGVERIFY 158a49d62c384c539a453e41a70214cfb85184954ae5c8df4b47eb74d58ff16f OP_CHECKSIG
 
 >>> # 2-of-3 (0xBA is OP_CHECKSIGADD, 0x52 is OP_2, 0x87 is OP_EQUAL)
->>> tap_script = TapScript([pubkey_a, 0xAD, pubkey_b, 0xBA, pubkey_c, 0xBA, 0x52, 0x87])
+>>> tap_script = TapScript([pubkey_a, 0xAC, pubkey_b, 0xBA, pubkey_c, 0xBA, 0x52, 0x87])
 >>> print(tap_script)
-331a8f6a14e1b41a6b523ddb505fbc0662a6446bd42408692497297d3474aeec OP_CHECKSIGVERIFY 158a49d62c384c539a453e41a70214cfb85184954ae5c8df4b47eb74d58ff16f OP_CHECKSIGADD 582662e8e47df59489d6756615aa3db3fa3bbaa75a424b9c78036265858f5544 OP_CHECKSIGADD OP_2 OP_EQUAL
+331a8f6a14e1b41a6b523ddb505fbc0662a6446bd42408692497297d3474aeec OP_CHECKSIG 158a49d62c384c539a453e41a70214cfb85184954ae5c8df4b47eb74d58ff16f OP_CHECKSIGADD 582662e8e47df59489d6756615aa3db3fa3bbaa75a424b9c78036265858f5544 OP_CHECKSIGADD OP_2 OP_EQUAL
 
 >>> # halvening timelock 1-of-1 (0xB1 is OP_CLTV, 0x75 is OP_DROP)
 >>> tap_script = TapScript([encode_minimal_num(840000), 0xB1, 0x75, pubkey_a, 0xAC])
@@ -555,7 +579,7 @@ Calculate the TapLeaf hash whose TapScript is a 2-of-4 using pubkeys from privat
 >>> tap_script = TapScript([pubkey_1, 0xAC, pubkey_2, 0xBA, pubkey_3, 0xBA, pubkey_4, 0xBA, 0x52, 0x87])  #/
 >>> # create the TapLeaf with the TapScript
 >>> tap_leaf = TapLeaf(tap_script)  #/
->>> # calculate the hash
+>>> # calculate the hash by using hash_tapleaf on the tapleaf version and the tap script
 >>> h = hash_tapleaf(int_to_byte(tap_leaf.tapleaf_version) + tap_leaf.tap_script.serialize())  #/
 >>> # print the hash hex
 >>> print(h.hex())  #/
@@ -573,7 +597,7 @@ taproot:TapRootTest:test_tapleaf_hash:
 * Hash of a TapBranch is a Tagged Hash (TapBranch) of the left hash and right hash, sorted
 #endmarkdown
 #code
-# Example of making a TapBranch and calculating the hash
+>>> # Example of making a TapBranch and calculating the hash
 >>> from ecc import PrivateKey
 >>> from hash import hash_tapbranch
 >>> from helper import int_to_byte
@@ -622,13 +646,13 @@ Calculate the TabBranch hash whose left and right nodes are TapLeafs whose TapSc
 >>> left_hash = tap_branch.left.hash()  #/
 >>> right_hash = tap_branch.right.hash()  #/
 >>> # calculate the hash using the sorted order with hash_tapbranch
->>> if left_hash > right_hash:  #/
+>>> if left_hash < right_hash:  #/
 ...     h = hash_tapbranch(left_hash + right_hash)  #/
 ... else:  #/
 ...     h = hash_tapbranch(right_hash + left_hash)  #/
 >>> # print the hex of the hash
 >>> print(h.hex())  #/
-f938d6fa5e3335e540f07a4007ee296640a977c89178aca79f15f2ec6acc14b6
+c10993776ad945520c444382b2b6028cdcf2de50aff74f31a32db8c5b5ee72ae
 
 #endexercise
 #unittest
@@ -637,8 +661,8 @@ taproot:TapRootTest:test_tapbranch_hash:
 #markdown
 # Computing the Merkle Root
 * The Merkle Root is the hash of the root element of the Merkle Tree
-* For TapLeaf: Tagged hash (TapLeaf) of TapLeaf Version followed by the TapScript
-* For TapBranch: Tagged hash (TapBranch) of the sorted children (left and right)
+* For TapLeaf: TapLeafHash(version + TapScript serialization)
+* For TapBranch: TapBranchHash(sorted(left, right))
 * It doesn't have to be the hash of anything, just has to be 32 bytes
 #endmarkdown
 #code
@@ -676,7 +700,7 @@ Calculate the External PubKey for a Taproot output whose internal pubkey is 9090
 >>> pubkey_2 = PrivateKey(20202).point.xonly()
 >>> pubkey_3 = PrivateKey(30303).point.xonly()
 >>> pubkey_4 = PrivateKey(40404).point.xonly()
->>> # create four tap scripts one for each pubkey
+>>> # create four tap scripts [pubkey, 0xac] one for each pubkey
 >>> tap_script_1 = TapScript([pubkey_1, 0xAC])  #/
 >>> tap_script_2 = TapScript([pubkey_2, 0xAC])  #/
 >>> tap_script_3 = TapScript([pubkey_3, 0xAC])  #/
@@ -710,7 +734,7 @@ Calculate the External PubKey for a Taproot output whose internal pubkey is 9090
 # Merkle Proof
 * List of hashes
 * Combine each with the hash of the TapScript, sorting them each time
-* The result is the Merkle Root, which can be combined with the Internal PubKey $P$ to get the tweak $t$
+* The result is the Merkle Root $m$, which is combined with the Internal PubKey $P$ to get the tweak $t$ with the formula $t=H_{taptweak}(P+m)$
 * If the result of $P+tG=Q$ where $Q$ is the External PubKey from the UTXO, this is a valid TapScript
 #endmarkdown
 #code
@@ -741,7 +765,7 @@ tb1pe0jrx2y2u8hdu8eysx8ssprdfej8lmuq3namllrazrey56vwan7s5j2wr8
 #endcode
 #exercise
 
-Validate the Control Block for the pubkey whose private key is 40404 for the previous external pubkey
+Validate the Control Block for the pubkey whose private key is 40404 for the external pubkey from the last exercise
 
 ----
 >>> from ecc import PrivateKey, S256Point
@@ -752,19 +776,19 @@ Validate the Control Block for the pubkey whose private key is 40404 for the pre
 >>> hash_1 = bytes.fromhex("22cac0b60bc7344152a8736425efd62532ee4d83e3de473ed82a64383b4e1208")
 >>> hash_2 = bytes.fromhex("a41d343d7419b99bfe8e66752fc3c45fd14aa2cc5ef5bf9073ed28dfc60e2e34")
 >>> pubkey_4 = bytes.fromhex("9e5f5a5c29d33c32185a3dc0a9ccb3e72743744dd869dd40b6265a23fd84a402")
->>> # create the TapScript and TapLeaf for pubkey 4
+>>> # create the TapScript and TapLeaf for pubkey 4 using [pubkey, 0xac]
 >>> tap_script_4 = TapScript([pubkey_4, 0xAC])  #/
 >>> tap_leaf_4 = TapLeaf(tap_script_4)  #/
 >>> # set the current hash to the TapLeaf's hash
 >>> current = tap_leaf_4.hash()  #/
 >>> # loop through hash_1 and hash_2
 >>> for h in (hash_1, hash_2):  #/
-...     # do a hash_tapbranch of h and current, sorted alphabetically
+...     # update current hash to be the hash_tapbranch of h and the current hash, sorted alphabetically
 ...     if h < current:  #/
 ...         current = hash_tapbranch(h + current)  #/
 ...     else:  #/
 ...         current = hash_tapbranch(current + h)  #/
->>> # get the external pubkey using the current hash as the merkle root with the internal pubkey
+>>> # get the external pubkey is the internal pubkey's tweaked_key method with the current hash
 >>> external_pubkey = internal_pubkey.tweaked_key(current)  #/
 >>> # check to see if the external pubkey's xonly is correct
 >>> print(external_pubkey.xonly() == external_pubkey_xonly)  #/
@@ -787,14 +811,15 @@ Create a Signet P2TR address with these Script Spend conditions:
 
 ----
 >>> from ecc import PrivateKey, S256Point
->>> from helper import sha256, big_endian_to_int
+>>> from hash import sha256
+>>> from helper import big_endian_to_int
 >>> from taproot import TapScript, TapLeaf, TapBranch
 >>> my_email = b"jimmy@programmingblockchain.com"  #/my_secret = b"<fill this in with your email>"
 >>> my_secret = big_endian_to_int(sha256(my_email))
 >>> internal_pubkey = S256Point.parse(bytes.fromhex("cd04c1bf88ca891af152fc57c36523ab59efb16b7ec07caca0cfc4a1f2051d9e"))
 >>> pubkey_2 = bytes.fromhex("331a8f6a14e1b41a6b523ddb505fbc0662a6446bd42408692497297d3474aeec")
 >>> pubkey_3 = bytes.fromhex("158a49d62c384c539a453e41a70214cfb85184954ae5c8df4b47eb74d58ff16f")
->>> # get your xonly pubkey
+>>> # get your xonly pubkey using PrivateKey
 >>> my_xonly = PrivateKey(my_secret).point.xonly()  #/
 >>> # make the first TapScript and TapLeaf using your xonly and OP_CHECKSIG (0xAC)
 >>> tap_script_1 = TapScript([my_xonly, 0xAC])  #/
@@ -819,11 +844,12 @@ tb1pxh7kypwsvxnat0z6588pufhx43r2fnqjyn846qj5kx8mgqcamvjsyn5cjg
 
 Send yourself the rest of the coins from the output of the previous exercise to the address you just created
 
-Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction" target="_mempool">Mempool Signet</a> to broadcast your transaction
+Use <a href="https://mempool.space/signet/tx/push" target="_mempool">Mempool Signet</a> to broadcast your transaction
 
 ----
 >>> from ecc import PrivateKey, S256Point
->>> from helper import sha256, big_endian_to_int
+>>> from hash import sha256
+>>> from helper import big_endian_to_int
 >>> from script import address_to_script_pubkey
 >>> from taproot import TapScript, TapLeaf, TapBranch
 >>> from tx import Tx, TxIn, TxOut
@@ -837,8 +863,8 @@ Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction"
 >>> # create a transaction input
 >>> tx_in = TxIn(prev_tx, prev_index)  #/
 >>> # calculate the target amount
->>> target_amount = tx_in.value(network="signet") - fee
->>> target_script = address_to_script_pubkey(target_address)
+>>> target_amount = tx_in.value(network="signet") - fee  #/
+>>> target_script = address_to_script_pubkey(target_address)  #/
 >>> # create a transaction output
 >>> tx_out = TxOut(target_amount, target_script)  #/
 >>> # create a transaction, segwit=True and network="signet"
@@ -849,7 +875,7 @@ Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction"
 >>> tx_obj.sign_p2tr_keypath(0, signing_key)  #/
 True
 >>> # print the serialized hex
->>> print(tx_obj.serialize().hex())
+>>> print(tx_obj.serialize().hex())  #/
 010000000001019c5a863b077030fd35b0c8170ae698d23c9a2f1e0873c466621739c4954480690100000000ffffffff0178e600000000000022512035fd6205d061a7d5bc5aa1ce1e26e6ac46a4cc1224cf5d0254b18fb4031ddb250140b33905727e316ab7fc8c2816761d61af9f1c535cee632a210642f07d619af632c6df51d63099be31e6d12ecd2a465543861eab6e53feb09ccd49288bda1cb8f600000000
 
 #endexercise
@@ -861,7 +887,8 @@ Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction"
 
 ----
 >>> from ecc import PrivateKey, S256Point
->>> from helper import sha256, big_endian_to_int
+>>> from hash import sha256
+>>> from helper import big_endian_to_int
 >>> from script import address_to_script_pubkey
 >>> from taproot import TapScript, TapLeaf, TapBranch
 >>> from tx import Tx, TxIn, TxOut
@@ -889,19 +916,24 @@ Use <a href="https://mempool.space/signet/tx/push to broadcast your transaction"
 >>> # create a transaction input
 >>> tx_in = TxIn(prev_tx, prev_index)  #/
 >>> # calculate the target amount
->>> target_amount = tx_in.value(network="signet") - fee
+>>> target_amount = tx_in.value(network="signet") - fee  #/
 >>> # calculate the target script
->>> target_script = address_to_script_pubkey(target_address)
+>>> target_script = address_to_script_pubkey(target_address)  #/
 >>> # create a transaction output
 >>> tx_out = TxOut(target_amount, target_script)  #/
 >>> # create a transaction, segwit=True and network="signet"
 >>> tx_obj = Tx(1, [tx_in], [tx_out], network="signet", segwit=True)  #/
->>> # create the control block with variables left over from the exercise 2 times ago
+>>> # create the control block from the TapBranch control_block method with internal_pubkey and tap_leaf_1
 >>> cb = tap_branch_2.control_block(internal_pubkey, tap_leaf_1)
+>>> # set the tx's witness to be the tap_script_1.raw_serialize() and control block, serialized
 >>> tx_in.witness = Witness([tap_script_1.raw_serialize(), cb.serialize()])
+>>> # set the message to be the transaction's sig_hash at index 0
 >>> msg = tx_obj.sig_hash(0)
+>>> # use sign_schnorr with yoru private key on the message and serialize it to get the signature
 >>> sig = my_private_key.sign_schnorr(msg).serialize()
+>>> # insert the sig in front of the other elements in the witness using tx_in.witness.items.insert
 >>> tx_in.witness.items.insert(0, sig)
+>>> # verify the transaction
 >>> print(tx_obj.verify())
 True
 >>> # print the serialized hex
@@ -920,7 +952,6 @@ ecc.S256Point.tweak
 ecc.S256Point.tweaked_key
 ecc.S256Point.p2tr_script
 ecc.PrivateKey.tweaked_key
-op.op_checksigadd_schnorr
 taproot.TapLeaf.hash
 taproot.TapBranch.hash
 taproot.ControlBlock.merkle_root

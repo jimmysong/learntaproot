@@ -153,7 +153,7 @@ class ControlBlock:
                 current = hash_tapbranch(current + h)
             else:
                 current = hash_tapbranch(h + current)
-                # return the current hash
+        # return the current hash
         return current
 
     def external_pubkey(self, tap_script):

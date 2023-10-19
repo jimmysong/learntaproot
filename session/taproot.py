@@ -140,7 +140,7 @@ class ControlBlock:
         # initialize the hash with the leaf's hash
         # go through the hashes in self.hashes
             # set the current hash as the hash_tapbranch of the sorted hashes
-                # return the current hash
+        # return the current hash
         raise NotImplementedError
 
     def external_pubkey(self, tap_script):
